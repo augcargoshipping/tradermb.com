@@ -4,7 +4,12 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, Copy, ArrowLeft, Smartphone, Clock } from "lucide-react"
+import { CheckCircle, Copy, ArrowLeft, Smartphone, Clock, Users } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { motion } from "framer-motion"
 
 interface SubmissionData {
   fullName: string
@@ -24,6 +29,9 @@ export default function ConfirmationPage() {
   const [copied, setCopied] = useState(false)
   const [loadingRate, setLoadingRate] = useState(true)
   const [rate, setRate] = useState<number | null>(null)
+  const { toast } = useToast();
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [referralName, setReferralName] = useState("");
 
   useEffect(() => {
     // Get submission data from sessionStorage
@@ -51,6 +59,44 @@ export default function ConfirmationPage() {
   const handleNewTransaction = () => {
     sessionStorage.removeItem("submissionData")
     router.push("/")
+  }
+
+  const handleReferralClick = () => {
+    setShowReferralModal(true);
+  }
+
+  const handleReferralSubmit = async () => {
+    if (!referralName.trim()) {
+      toast({ 
+        title: "Name required", 
+        description: "Please enter your full name to continue",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setShowReferralModal(false);
+    
+    const url = `https://www.tradermb.com/purchase?ref=${encodeURIComponent(referralName)}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "TRADE RMB Referral",
+          text: `Join TRADE RMB and get unbeatable rates! Use my referral link:`,
+          url,
+        });
+        toast({ title: "Referral link shared!" });
+      } catch {
+        // User cancelled share
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast({ 
+        title: "Referral link copied!", 
+        description: url 
+      });
+    }
   }
 
   if (!submissionData) {
@@ -200,6 +246,31 @@ export default function ConfirmationPage() {
           </CardContent>
         </Card>
 
+        {/* Referral Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="mb-6"
+        >
+          <div className="bg-white/80 backdrop-blur-md border border-pink-200 rounded-2xl shadow-xl text-center p-6">
+            <div className="flex items-center justify-center mb-3">
+              <Users className="w-8 h-8 text-pink-600 mr-2" />
+              <h2 className="text-xl font-bold text-pink-700">Refer & Earn</h2>
+            </div>
+            <p className="text-pink-900 mb-4 text-sm">
+              While you wait for your payment, invite your friends to TRADE RMB and earn cash rewards for every successful referral!
+            </p>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="inline-block bg-pink-600 text-white font-bold px-6 py-3 rounded-lg shadow hover:bg-pink-700 transition cursor-pointer"
+              onClick={handleReferralClick}
+            >
+              Start Referring Now
+            </motion.div>
+          </div>
+        </motion.div>
+
         {/* Action Buttons */}
         <div className="space-y-3">
           <Button
@@ -244,6 +315,50 @@ export default function ConfirmationPage() {
           </span>
         </div>
       </div>
+
+      {/* Referral Modal */}
+      <Dialog open={showReferralModal} onOpenChange={setShowReferralModal}>
+        <DialogContent className="max-w-xs sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Enter Your Name</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="referral-name">Full Name</Label>
+              <Input
+                id="referral-name"
+                type="text"
+                placeholder="Enter your full name"
+                value={referralName}
+                onChange={(e) => setReferralName(e.target.value)}
+                className="mt-1"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleReferralSubmit();
+                  }
+                }}
+              />
+            </div>
+            <p className="text-sm text-gray-600 text-center">
+              This name will be used in your referral link
+            </p>
+          </div>
+          <DialogFooter className="flex justify-center space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowReferralModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleReferralSubmit}
+              className="bg-pink-600 hover:bg-pink-700"
+            >
+              Create Referral Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

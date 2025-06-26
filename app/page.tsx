@@ -8,8 +8,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ArrowRight, Users, ShieldCheck, Zap } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import { useSession, signIn, signOut } from "next-auth/react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import GreetingBanner from "./components/GreetingBanner"
 
 export default function LandingPage() {
@@ -18,9 +19,9 @@ export default function LandingPage() {
   const [loadingRate, setLoadingRate] = useState(true)
   const [navShadow, setNavShadow] = useState(false)
   const { toast } = useToast();
-  const { data: session } = useSession();
-  const loginBtnRef = useRef<HTMLButtonElement>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [referralName, setReferralName] = useState("");
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     async function loadRate() {
@@ -53,6 +54,45 @@ export default function LandingPage() {
     router.push("/purchase")
   }
 
+  const handleReferralClick = () => {
+    setShowReferralModal(true);
+  }
+
+  const handleReferralSubmit = async () => {
+    if (!referralName.trim()) {
+      toast({ 
+        title: "Name required", 
+        description: "Please enter your full name to continue",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUserName(referralName);
+    setShowReferralModal(false);
+    
+    const url = `https://www.tradermb.com/purchase?ref=${encodeURIComponent(referralName)}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "TRADE RMB Referral",
+          text: `Join TRADE RMB and get unbeatable rates! Use my referral link:`,
+          url,
+        });
+        toast({ title: "Referral link shared!" });
+      } catch {
+        // User cancelled share
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast({ 
+        title: "Referral link copied!", 
+        description: url 
+      });
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-pink-50">
       {/* Navigation */}
@@ -78,21 +118,25 @@ export default function LandingPage() {
             >
               <span className="text-base sm:text-lg font-bold tracking-wide">BUY RMB</span>
             </Button>
-            {/* Auth UI */}
-            {session ? (
-              <div className="flex items-center space-x-2 ml-4">
-                <span className="text-sm font-medium text-gray-700">{session.user?.name}</span>
-                <Button variant="outline" size="sm" onClick={() => signOut()} className="ml-1">Logout</Button>
-              </div>
-            ) : (
-              <Button ref={loginBtnRef} variant="outline" size="sm" onClick={() => signIn("google")}>Login</Button>
-            )}
           </div>
         </div>
       </nav>
 
+      {/* Rate Display at Top */}
+      <div className="w-full bg-indigo-100 border-b border-indigo-200 py-2">
+        <div className="max-w-6xl mx-auto px-4 text-center">
+          <span className="inline-block bg-indigo-600 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm">
+            {loadingRate ? "Loading Rate..." : rate !== null ? `Current Rate: 1 GHS = ${rate} RMB` : "Rate Unavailable"}
+          </span>
+        </div>
+      </div>
+
       {/* Greeting Banner */}
-      <GreetingBanner />
+      {userName && (
+        <div className="w-full bg-indigo-50 text-indigo-800 text-center py-2 font-semibold text-base shadow-sm">
+          Hello {userName}, you are welcome
+        </div>
+      )}
 
       {/* Hero Section */}
       <section className="relative flex flex-col md:flex-row items-center justify-between max-w-6xl mx-auto px-6 py-16 gap-10">
@@ -122,14 +166,35 @@ export default function LandingPage() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.2 }}
-          className="w-full md:w-1/2 flex justify-center"
+          className="w-full md:w-1/2 flex flex-col items-center"
         >
-          <img
+          <motion.img
             src="/hero-illustration.png"
             alt="Payment Transfer Illustration"
-            className="max-w-xs md:max-w-md rounded-2xl shadow-xl border border-white/40 bg-white/40"
+            className="max-w-[200px] md:max-w-[250px]"
             style={{ objectFit: 'contain' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            whileHover={{ 
+              scale: 1.05,
+              rotate: 2,
+              transition: { duration: 0.3 }
+            }}
           />
+          <motion.p 
+            className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-black text-gray-800 mt-6 text-center leading-tight"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            whileHover={{ 
+              scale: 1.02,
+              color: "#4f46e5",
+              transition: { duration: 0.3 }
+            }}
+          >
+            PAY YOUR CHINESE SUPPLIERS WITH EASE
+          </motion.p>
         </motion.div>
       </section>
 
@@ -180,29 +245,7 @@ export default function LandingPage() {
           <motion.div
             whileHover={{ scale: 1.07 }}
             className="inline-block bg-pink-600 text-white font-bold px-6 py-2 rounded-lg shadow hover:bg-pink-700 transition cursor-pointer"
-            onClick={async () => {
-              if (!session?.user?.name) {
-                setShowLoginModal(true);
-                return;
-              }
-              const refName = session.user.name;
-              const url = `https://www.tradermb.com/purchase?ref=${encodeURIComponent(refName)}`;
-              if (navigator.share) {
-                try {
-                  await navigator.share({
-                    title: "TRADE RMB Referral",
-                    text: `Join TRADE RMB and get unbeatable rates! Use my referral link:`,
-                    url,
-                  });
-                  toast({ title: "Referral link shared!" });
-                } catch {
-                  // User cancelled share
-                }
-              } else {
-                await navigator.clipboard.writeText(url);
-                toast({ title: "Referral link copied!", description: url });
-              }
-            }}
+            onClick={handleReferralClick}
           >
             Start Referring Now
           </motion.div>
@@ -222,19 +265,19 @@ export default function LandingPage() {
           <h3 className="text-xl font-bold text-indigo-700 mb-4 text-center">What Our Customers Say</h3>
           <div className="space-y-6">
             <div className="border-l-4 border-indigo-400 pl-4 py-2">
-              <p className="text-gray-800 italic">“Super fast and reliable! My RMB was funded in minutes. Highly recommend.”</p>
+              <p className="text-gray-800 italic">"Super fast and reliable! My RMB was funded in minutes. Highly recommend."</p>
               <div className="mt-2 flex items-center space-x-2">
                 <span className="font-semibold text-indigo-600">— Nana A., Accra</span>
               </div>
             </div>
             <div className="border-l-4 border-pink-400 pl-4 py-2">
-              <p className="text-gray-800 italic">“Great rates and excellent support. I felt safe throughout the process.”</p>
+              <p className="text-gray-800 italic">"Great rates and excellent support. I felt safe throughout the process."</p>
               <div className="mt-2 flex items-center space-x-2">
                 <span className="font-semibold text-pink-600">— Linda M., Kumasi</span>
               </div>
             </div>
             <div className="border-l-4 border-green-400 pl-4 py-2">
-              <p className="text-gray-800 italic">“The referral bonus is a nice touch. I've already told my friends!”</p>
+              <p className="text-gray-800 italic">"The referral bonus is a nice touch. I've already told my friends!"</p>
               <div className="mt-2 flex items-center space-x-2">
                 <span className="font-semibold text-green-600">— Kwame B., Tamale</span>
               </div>
@@ -290,29 +333,52 @@ export default function LandingPage() {
         </Button>
       </div>
 
-      {/* Rate Display at Bottom */}
-      <div className="w-full flex justify-center mt-8 mb-2">
-        <span className="inline-block bg-indigo-100 text-indigo-700 font-bold text-sm sm:text-lg px-2 sm:px-4 py-1 sm:py-2 rounded-full shadow-sm">
-          {loadingRate ? "Loading..." : rate !== null ? `Current Rate: 1 GHS = ${rate} RMB` : "Rate Unavailable"}
-        </span>
-      </div>
-
       {/* Footer */}
       <footer className="text-center text-gray-500 py-8">
         <p>Secure • Fast • Reliable</p>
         <p className="mt-1">© {new Date().getFullYear()} TRADE RMB. All rights reserved.</p>
       </footer>
 
-      <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
+      {/* Referral Name Modal */}
+      <Dialog open={showReferralModal} onOpenChange={setShowReferralModal}>
         <DialogContent className="max-w-xs sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center">Login Required</DialogTitle>
+            <DialogTitle className="text-center">Enter Your Name</DialogTitle>
           </DialogHeader>
-          <div className="text-center text-gray-700 mb-4">
-            Please log in to share your referral link and earn rewards!
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="referral-name">Full Name</Label>
+              <Input
+                id="referral-name"
+                type="text"
+                placeholder="Enter your full name"
+                value={referralName}
+                onChange={(e) => setReferralName(e.target.value)}
+                className="mt-1"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleReferralSubmit();
+                  }
+                }}
+              />
+            </div>
+            <p className="text-sm text-gray-600 text-center">
+              This name will be used in your referral link
+            </p>
           </div>
-          <DialogFooter className="flex justify-center">
-            <Button ref={loginBtnRef} onClick={() => { setShowLoginModal(false); signIn("google"); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg">LOGIN</Button>
+          <DialogFooter className="flex justify-center space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowReferralModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleReferralSubmit}
+              className="bg-pink-600 hover:bg-pink-700"
+            >
+              Create Referral Link
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
