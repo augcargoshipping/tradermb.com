@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Upload, Calculator } from "lucide-react"
 
+export const dynamic = "force-dynamic"
+
 interface FormData {
   fullName: string
   mobileNumber: string
