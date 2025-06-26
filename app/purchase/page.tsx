@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,6 +27,7 @@ interface FormErrors {
 
 export default function PurchasePage() {
   const router = useRouter()
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     mobileNumber: "",
@@ -40,6 +41,15 @@ export default function PurchasePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [exchangeRate, setExchangeRate] = useState<number | null>(null)
   const [loadingRate, setLoadingRate] = useState(true)
+
+  // Prefill referralName from ?ref= param if present
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref && !formData.referralName) {
+      setFormData((prev) => ({ ...prev, referralName: ref }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Fetch the current exchange rate
   useEffect(() => {
@@ -164,14 +174,14 @@ export default function PurchasePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-pink-50 py-8 px-4">
       <div className="max-w-lg mx-auto">
         <div className="flex items-center mb-6">
           <Button variant="ghost" size="sm" onClick={handleGoBack} className="mr-3">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">RMB TRADE</h1>
+            <h1 className="text-lg sm:text-2xl font-extrabold uppercase tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent drop-shadow select-none">TRADE RMB</h1>
             <p className="text-sm text-gray-600">Purchase Chinese Yuan</p>
           </div>
         </div>

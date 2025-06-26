@@ -1,16 +1,25 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowRight, Users, ShieldCheck, Zap } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { ToastAction } from "@/components/ui/toast"
+import { useSession, signIn, signOut } from "next-auth/react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 export default function LandingPage() {
   const router = useRouter()
   const [rate, setRate] = useState<number | null>(null)
   const [loadingRate, setLoadingRate] = useState(true)
+  const [navShadow, setNavShadow] = useState(false)
+  const { toast } = useToast();
+  const { data: session } = useSession();
+  const loginBtnRef = useRef<HTMLButtonElement>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     async function loadRate() {
@@ -31,6 +40,14 @@ export default function LandingPage() {
     loadRate()
   }, [])
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setNavShadow(window.scrollY > 10)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const handleBuyRMB = () => {
     router.push("/purchase")
   }
@@ -38,24 +55,37 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-pink-50">
       {/* Navigation */}
-      <nav className="px-6 py-4">
+      <nav className={`sticky top-0 z-40 bg-white/60 backdrop-blur-md transition-shadow duration-300 px-4 sm:px-6 py-3 sm:py-4 ${navShadow ? 'shadow-lg' : 'shadow-none'}`} id="main-navbar">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Globe Logo */}
-            <span className="w-10 h-10 flex items-center justify-center">
-              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
+              <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="18" cy="18" r="16" stroke="#6366f1" strokeWidth="2.5" fill="#fff"/>
                 <ellipse cx="18" cy="18" rx="10" ry="16" stroke="#6366f1" strokeWidth="2" fill="none"/>
                 <ellipse cx="18" cy="18" rx="16" ry="6" stroke="#6366f1" strokeWidth="2" fill="none"/>
                 <circle cx="18" cy="18" r="2.5" fill="#6366f1"/>
               </svg>
             </span>
-            <span className="text-2xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent tracking-tight drop-shadow select-none">TRADE RMB</span>
+            <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent tracking-tight drop-shadow select-none">TRADE RMB</span>
           </div>
-          <div className="flex-1 flex justify-end">
-            <span className="inline-block bg-indigo-100 text-indigo-700 font-bold text-lg px-4 py-2 rounded-full shadow-sm">
-              {loadingRate ? "Loading..." : rate !== null ? `Current Rate: 1 GHS = ${rate} RMB` : "Rate Unavailable"}
-            </span>
+          <div className="flex-1 flex justify-end items-center space-x-2">
+            <Button
+              onClick={handleBuyRMB}
+              className="group bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-bold px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-base sm:text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              style={{ minWidth: '120px' }}
+            >
+              <span className="text-base sm:text-lg font-bold tracking-wide">BUY RMB</span>
+            </Button>
+            {/* Auth UI */}
+            {session ? (
+              <div className="flex items-center space-x-2 ml-4">
+                <span className="text-sm font-medium text-gray-700">{session.user?.name}</span>
+                <Button variant="outline" size="sm" onClick={() => signOut()} className="ml-1">Logout</Button>
+              </div>
+            ) : (
+              <Button ref={loginBtnRef} variant="outline" size="sm" onClick={() => signIn("google")}>Login</Button>
+            )}
           </div>
         </div>
       </nav>
@@ -77,9 +107,10 @@ export default function LandingPage() {
           </p>
           <Button
             onClick={handleBuyRMB}
-            className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-bold px-8 py-4 rounded-xl text-lg shadow-lg hover:scale-105 transition-transform duration-200"
+            className="group bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-bold px-8 py-4 rounded-xl text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            style={{ minWidth: '140px' }}
           >
-            Get Started <ArrowRight className="inline ml-2 w-5 h-5" />
+            <span className="text-base sm:text-lg font-bold tracking-wide">Get Started</span>
           </Button>
         </motion.div>
         {/* Modern Illustration */}
@@ -138,18 +169,104 @@ export default function LandingPage() {
         className="max-w-2xl mx-auto mb-16"
       >
         <div className="bg-white/80 backdrop-blur-md border border-pink-200 rounded-2xl shadow-xl text-center p-8">
-          <h2 className="text-2xl font-bold text-pink-700 mb-2">Refer &amp; Earn</h2>
+          <h2 className="text-2xl font-bold text-pink-700 mb-2">Refer & Earn</h2>
           <p className="text-pink-900 mb-3">
             Invite your friends to TRADE RMB and earn cash rewards for every successful referral. There's no limit—refer more, earn more!
           </p>
           <motion.div
             whileHover={{ scale: 1.07 }}
             className="inline-block bg-pink-600 text-white font-bold px-6 py-2 rounded-lg shadow hover:bg-pink-700 transition cursor-pointer"
+            onClick={async () => {
+              if (!session?.user?.name) {
+                setShowLoginModal(true);
+                return;
+              }
+              const refName = session.user.name;
+              const url = `https://www.tradermb.com/purchase?ref=${encodeURIComponent(refName)}`;
+              if (navigator.share) {
+                try {
+                  await navigator.share({
+                    title: "TRADE RMB Referral",
+                    text: `Join TRADE RMB and get unbeatable rates! Use my referral link:`,
+                    url,
+                  });
+                  toast({ title: "Referral link shared!" });
+                } catch {
+                  // User cancelled share
+                }
+              } else {
+                await navigator.clipboard.writeText(url);
+                toast({ title: "Referral link copied!", description: url });
+              }
+            }}
           >
             Start Referring Now
           </motion.div>
         </div>
       </motion.div>
+
+      {/* Testimonials & FAQ Section */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 px-4 mb-16">
+        {/* Testimonials */}
+        <motion.div
+          initial={{ opacity: 0, x: -40 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 flex flex-col justify-center"
+        >
+          <h3 className="text-xl font-bold text-indigo-700 mb-4 text-center">What Our Customers Say</h3>
+          <div className="space-y-6">
+            <div className="border-l-4 border-indigo-400 pl-4 py-2">
+              <p className="text-gray-800 italic">“Super fast and reliable! My RMB was funded in minutes. Highly recommend.”</p>
+              <div className="mt-2 flex items-center space-x-2">
+                <span className="font-semibold text-indigo-600">— Nana A., Accra</span>
+              </div>
+            </div>
+            <div className="border-l-4 border-pink-400 pl-4 py-2">
+              <p className="text-gray-800 italic">“Great rates and excellent support. I felt safe throughout the process.”</p>
+              <div className="mt-2 flex items-center space-x-2">
+                <span className="font-semibold text-pink-600">— Linda M., Kumasi</span>
+              </div>
+            </div>
+            <div className="border-l-4 border-green-400 pl-4 py-2">
+              <p className="text-gray-800 italic">“The referral bonus is a nice touch. I've already told my friends!”</p>
+              <div className="mt-2 flex items-center space-x-2">
+                <span className="font-semibold text-green-600">— Kwame B., Tamale</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        {/* FAQ */}
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 flex flex-col justify-center"
+        >
+          <h3 className="text-xl font-bold text-purple-700 mb-4 text-center">Frequently Asked Questions</h3>
+          <div className="space-y-4">
+            {/* FAQ Accordion */}
+            <details className="group border-b pb-2">
+              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-purple-700 transition">How long does it take to receive RMB?</summary>
+              <p className="mt-2 text-gray-600 text-sm">Most transfers are completed within minutes, 24/7. In rare cases, it may take up to 1 hour.</p>
+            </details>
+            <details className="group border-b pb-2">
+              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-purple-700 transition">Is my money safe?</summary>
+              <p className="mt-2 text-gray-600 text-sm">Yes! We use secure payment channels and never share your data. Your funds are protected at every step.</p>
+            </details>
+            <details className="group border-b pb-2">
+              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-purple-700 transition">Can I refer friends?</summary>
+              <p className="mt-2 text-gray-600 text-sm">Absolutely! Use your referral link to invite friends and earn cash rewards for every successful transaction.</p>
+            </details>
+            <details className="group">
+              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-purple-700 transition">What payment methods do you accept?</summary>
+              <p className="mt-2 text-gray-600 text-sm">We accept all major Ghanaian mobile money networks (MTN, Vodafone, AirtelTigo) and in-person payments at our office.</p>
+            </details>
+          </div>
+        </motion.div>
+      </div>
 
       {/* Support Info */}
       <div className="text-center mt-8 text-sm text-gray-500">
@@ -171,7 +288,7 @@ export default function LandingPage() {
 
       {/* Rate Display at Bottom */}
       <div className="w-full flex justify-center mt-8 mb-2">
-        <span className="inline-block bg-indigo-100 text-indigo-700 font-bold text-lg px-4 py-2 rounded-full shadow-sm">
+        <span className="inline-block bg-indigo-100 text-indigo-700 font-bold text-sm sm:text-lg px-2 sm:px-4 py-1 sm:py-2 rounded-full shadow-sm">
           {loadingRate ? "Loading..." : rate !== null ? `Current Rate: 1 GHS = ${rate} RMB` : "Rate Unavailable"}
         </span>
       </div>
@@ -181,6 +298,20 @@ export default function LandingPage() {
         <p>Secure • Fast • Reliable</p>
         <p className="mt-1">© {new Date().getFullYear()} TRADE RMB. All rights reserved.</p>
       </footer>
+
+      <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
+        <DialogContent className="max-w-xs sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Login Required</DialogTitle>
+          </DialogHeader>
+          <div className="text-center text-gray-700 mb-4">
+            Please log in to share your referral link and earn rewards!
+          </div>
+          <DialogFooter className="flex justify-center">
+            <Button ref={loginBtnRef} onClick={() => { setShowLoginModal(false); signIn("google"); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg">LOGIN</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
