@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,7 +27,7 @@ interface FormErrors {
   alipayQR?: string
 }
 
-export default function PurchasePage() {
+function PurchaseForm() {
   const router = useRouter()
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState<FormData>({
@@ -330,9 +330,22 @@ export default function PurchasePage() {
 
         <div className="text-center mt-8 text-sm text-gray-500">
           <p>Secure • Fast • Reliable</p>
-          <p className="mt-1">© 2025 RMB TRADE. All rights reserved.</p>
+          <p className="mt-1">© 2025 TRADE RMB. All rights reserved.</p>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PurchasePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-pink-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p>Loading...</p>
+      </div>
+    </div>}>
+      <PurchaseForm />
+    </Suspense>
   )
 }
