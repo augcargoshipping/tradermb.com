@@ -3,8 +3,6 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Providers from "./providers"
-import { useSession } from "next-auth/react"
-import GreetingBanner from "./components/GreetingBanner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,7 +25,6 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <Providers>
-          <GreetingBanner />
           {children}
         </Providers>
       </body>

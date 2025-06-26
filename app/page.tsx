@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useSession, signIn, signOut } from "next-auth/react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import GreetingBanner from "./components/GreetingBanner"
 
 export default function LandingPage() {
   const router = useRouter()
@@ -89,6 +90,9 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
+
+      {/* Greeting Banner */}
+      <GreetingBanner />
 
       {/* Hero Section */}
       <section className="relative flex flex-col md:flex-row items-center justify-between max-w-6xl mx-auto px-6 py-16 gap-10">
