@@ -11,6 +11,8 @@ import { ArrowLeft, Upload, Calculator, ChevronLeft, ChevronRight } from "lucide
 
 export const dynamic = "force-dynamic"
 
+// Updated with dark red theme - 2025
+
 interface FormData {
   fullName: string
   mobileNumber: string
