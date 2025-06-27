@@ -142,12 +142,12 @@ export class AirtableService {
 
       // Fallback: look for rate in recent customer records
       const response = await fetch(`${this.baseUrl}?maxRecords=10&sort[0][field]=Submitted_At&sort[0][direction]=desc`, {
-        headers: this.getHeaders(),
-      })
+      headers: this.getHeaders(),
+    })
 
-      const data = await this.handleAirtableResponse(response)
+    const data = await this.handleAirtableResponse(response)
 
-      if (data.records && data.records.length > 0) {
+    if (data.records && data.records.length > 0) {
         // Look for a record with a Rate field
         for (const record of data.records) {
           const fields = record.fields as CustomerRecord
@@ -166,7 +166,7 @@ export class AirtableService {
       return null
     } catch (error) {
       console.error("❌ Error fetching rate:", error)
-      return null
+    return null
     }
   }
 

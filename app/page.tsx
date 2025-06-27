@@ -15,17 +15,17 @@ import GreetingBanner from "./components/GreetingBanner"
 
 export default function LandingPage() {
   const router = useRouter()
-  const [rate, setRate] = useState<number | null>(null)
-  const [loadingRate, setLoadingRate] = useState(true)
+const [rate, setRate] = useState<number | null>(null)
+const [loadingRate, setLoadingRate] = useState(true)
   const [navShadow, setNavShadow] = useState(false)
   const { toast } = useToast();
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [referralName, setReferralName] = useState("");
   const [userName, setUserName] = useState("");
 
-  useEffect(() => {
-    async function loadRate() {
-      try {
+useEffect(() => {
+  async function loadRate() {
+    try {
         const response = await fetch("/api/fetch-rate")
         const data = await response.json()
         if (data.success && data.rate !== null) {
@@ -34,13 +34,13 @@ export default function LandingPage() {
           setRate(null)
         }
       } catch {
-        setRate(null)
-      } finally {
-        setLoadingRate(false)
-      }
+      setRate(null)
+    } finally {
+      setLoadingRate(false)
     }
-    loadRate()
-  }, [])
+  }
+  loadRate()
+}, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -71,7 +71,7 @@ export default function LandingPage() {
     setUserName(referralName);
     setShowReferralModal(false);
     
-    const url = `https://www.tradermb.com/purchase?ref=${encodeURIComponent(referralName)}`;
+    const url = `https://www.tradermb.com?ref=${encodeURIComponent(referralName)}`;
     
     if (navigator.share) {
       try {
@@ -94,26 +94,26 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-pink-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
-      <nav className={`sticky top-0 z-40 bg-white/60 backdrop-blur-md transition-shadow duration-300 px-4 sm:px-6 py-3 sm:py-4 ${navShadow ? 'shadow-lg' : 'shadow-none'}`} id="main-navbar">
+      <nav className={`sticky top-0 z-40 bg-white/95 backdrop-blur-md transition-shadow duration-300 px-4 sm:px-6 py-3 sm:py-4 ${navShadow ? 'shadow-lg' : 'shadow-none'}`} id="main-navbar">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Globe Logo */}
             <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
               <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="18" cy="18" r="16" stroke="#6366f1" strokeWidth="2.5" fill="#fff"/>
-                <ellipse cx="18" cy="18" rx="10" ry="16" stroke="#6366f1" strokeWidth="2" fill="none"/>
-                <ellipse cx="18" cy="18" rx="16" ry="6" stroke="#6366f1" strokeWidth="2" fill="none"/>
-                <circle cx="18" cy="18" r="2.5" fill="#6366f1"/>
+                <circle cx="18" cy="18" r="16" stroke="#b91c1c" strokeWidth="2.5" fill="#fff"/>
+                <ellipse cx="18" cy="18" rx="10" ry="16" stroke="#b91c1c" strokeWidth="2" fill="none"/>
+                <ellipse cx="18" cy="18" rx="16" ry="6" stroke="#b91c1c" strokeWidth="2" fill="none"/>
+                <circle cx="18" cy="18" r="2.5" fill="#b91c1c"/>
               </svg>
             </span>
-            <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent tracking-tight drop-shadow select-none">TRADE RMB</span>
+            <span className="text-lg sm:text-2xl font-extrabold text-gray-900 tracking-tight drop-shadow select-none">TRADE RMB</span>
           </div>
           <div className="flex-1 flex justify-end items-center space-x-2">
             <Button
               onClick={handleBuyRMB}
-              className="group bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-bold px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-base sm:text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="group bg-red-700 hover:bg-red-800 text-white font-bold px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-base sm:text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-400"
               style={{ minWidth: '120px' }}
             >
               <span className="text-base sm:text-lg font-bold tracking-wide">BUY RMB</span>
@@ -123,9 +123,9 @@ export default function LandingPage() {
       </nav>
 
       {/* Rate Display at Top */}
-      <div className="w-full bg-indigo-100 border-b border-indigo-200 py-2">
+      <div className="w-full bg-red-50 border-b border-red-200 py-2">
         <div className="max-w-6xl mx-auto px-4 text-center">
-          <span className="inline-block bg-indigo-600 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm">
+          <span className="inline-block bg-red-700 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm">
             {loadingRate ? "Loading Rate..." : rate !== null ? `Current Rate: 1 GHS = ${rate} RMB` : "Rate Unavailable"}
           </span>
         </div>
@@ -133,7 +133,7 @@ export default function LandingPage() {
 
       {/* Greeting Banner */}
       {userName && (
-        <div className="w-full bg-indigo-50 text-indigo-800 text-center py-2 font-semibold text-base shadow-sm">
+        <div className="w-full bg-red-100 text-red-800 text-center py-2 font-semibold text-base shadow-sm">
           Hello {userName}, you are welcome
         </div>
       )}
@@ -145,17 +145,17 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="w-full md:w-1/2 bg-white/70 backdrop-blur-lg rounded-3xl shadow-2xl p-10 text-center md:text-left"
+          className="w-full md:w-1/2 bg-white rounded-3xl shadow-2xl p-10 text-center md:text-left"
         >
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 leading-tight">
-            Exchange <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">GHS to RMB</span> Instantly
+          <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4 leading-tight">
+            Exchange <span className="text-red-700">GHS to RMB</span> Instantly
           </h1>
-          <p className="text-lg text-gray-700 mb-8">
+          <p className="text-base md:text-lg text-gray-700 mb-8">
             The fastest, most secure way to buy Chinese Yuan (RMB) with Ghana Cedis. Enjoy unbeatable rates, instant funding, and total peace of mind.
           </p>
           <Button
             onClick={handleBuyRMB}
-            className="group bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-bold px-8 py-4 rounded-xl text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="group bg-red-700 hover:bg-red-800 text-white font-bold px-8 py-4 rounded-xl text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-400"
             style={{ minWidth: '140px' }}
           >
             <span className="text-base sm:text-lg font-bold tracking-wide">Get Started</span>
@@ -183,22 +183,21 @@ export default function LandingPage() {
             }}
           />
           <motion.p 
-            className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-black text-gray-800 mt-6 text-center leading-tight"
+            className="text-3xl md:text-3xl lg:text-4xl font-black text-gray-900 mt-6 text-center leading-tight"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
             whileHover={{ 
               scale: 1.02,
-              color: "#4f46e5",
               transition: { duration: 0.3 }
             }}
           >
-            PAY YOUR CHINESE SUPPLIERS WITH EASE
+            <span className="text-red-700">PAY</span> YOUR CHINESE SUPPLIERS WITH <span className="text-red-700">EASE</span>
           </motion.p>
         </motion.div>
       </section>
 
-      {/* Features Grid */}
+        {/* Features Grid */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -206,27 +205,27 @@ export default function LandingPage() {
         transition={{ duration: 0.8, delay: 0.2 }}
         className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 py-12 px-4"
       >
-        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-md hover:shadow-2xl transition-shadow duration-300">
+        <Card className="border-0 shadow-lg bg-white hover:shadow-2xl transition-shadow duration-300">
           <CardContent className="p-8 text-center flex flex-col items-center">
-            <Zap className="w-10 h-10 text-pink-500 mb-3" />
+            <Zap className="w-10 h-10 text-orange-500 mb-3" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Instant Funding</h3>
             <p className="text-gray-600">Your RMB is delivered to your account within minutes, 24/7.</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-md hover:shadow-2xl transition-shadow duration-300">
+            </CardContent>
+          </Card>
+        <Card className="border-0 shadow-lg bg-white hover:shadow-2xl transition-shadow duration-300">
           <CardContent className="p-8 text-center flex flex-col items-center">
-            <ShieldCheck className="w-10 h-10 text-indigo-500 mb-3" />
+            <ShieldCheck className="w-10 h-10 text-red-600 mb-3" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Safe & Secure</h3>
             <p className="text-gray-600">Your funds and data are protected with industry-leading security.</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-md hover:shadow-2xl transition-shadow duration-300">
+            </CardContent>
+          </Card>
+        <Card className="border-0 shadow-lg bg-white hover:shadow-2xl transition-shadow duration-300">
           <CardContent className="p-8 text-center flex flex-col items-center">
-            <Users className="w-10 h-10 text-purple-500 mb-3" />
+            <Users className="w-10 h-10 text-blue-500 mb-3" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Trusted by Many</h3>
             <p className="text-gray-600">Hundreds of happy customers rely on TRADE RMB for their currency needs.</p>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
       </motion.div>
 
       {/* Referral Section */}
@@ -237,14 +236,14 @@ export default function LandingPage() {
         transition={{ duration: 0.8, delay: 0.3 }}
         className="max-w-2xl mx-auto mb-16"
       >
-        <div className="bg-white/80 backdrop-blur-md border border-pink-200 rounded-2xl shadow-xl text-center p-8">
-          <h2 className="text-2xl font-bold text-pink-700 mb-2">Refer & Earn</h2>
-          <p className="text-pink-900 mb-3">
-            Invite your friends to TRADE RMB and earn cash rewards for every successful referral. There's no limit—refer more, earn more!
+        <div className="bg-white border border-orange-200 rounded-2xl shadow-xl text-center p-8">
+          <h2 className="text-2xl font-bold text-orange-700 mb-2">Refer & Earn</h2>
+          <p className="text-orange-800 mb-3">
+            Invite your friends to TRADE RMB and earn cash rewards for every successful referral.
           </p>
           <motion.div
             whileHover={{ scale: 1.07 }}
-            className="inline-block bg-pink-600 text-white font-bold px-6 py-2 rounded-lg shadow hover:bg-pink-700 transition cursor-pointer"
+            className="inline-block bg-orange-600 text-white font-bold px-6 py-2 rounded-lg shadow hover:bg-orange-700 transition cursor-pointer"
             onClick={handleReferralClick}
           >
             Start Referring Now
@@ -260,26 +259,26 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 flex flex-col justify-center"
+          className="bg-white rounded-2xl shadow-xl p-8 flex flex-col justify-center"
         >
-          <h3 className="text-xl font-bold text-indigo-700 mb-4 text-center">What Our Customers Say</h3>
+          <h3 className="text-xl font-bold text-red-700 mb-4 text-center">What Our Customers Say</h3>
           <div className="space-y-6">
-            <div className="border-l-4 border-indigo-400 pl-4 py-2">
+            <div className="border-l-4 border-red-400 pl-4 py-2">
               <p className="text-gray-800 italic">"Super fast and reliable! My RMB was funded in minutes. Highly recommend."</p>
               <div className="mt-2 flex items-center space-x-2">
-                <span className="font-semibold text-indigo-600">— Nana A., Accra</span>
+                <span className="font-semibold text-red-600">— Nana A., Accra</span>
               </div>
-            </div>
-            <div className="border-l-4 border-pink-400 pl-4 py-2">
+</div>
+            <div className="border-l-4 border-orange-400 pl-4 py-2">
               <p className="text-gray-800 italic">"Great rates and excellent support. I felt safe throughout the process."</p>
               <div className="mt-2 flex items-center space-x-2">
-                <span className="font-semibold text-pink-600">— Linda M., Kumasi</span>
-              </div>
-            </div>
-            <div className="border-l-4 border-green-400 pl-4 py-2">
+                <span className="font-semibold text-orange-600">— Linda M., Kumasi</span>
+        </div>
+      </div>
+            <div className="border-l-4 border-blue-400 pl-4 py-2">
               <p className="text-gray-800 italic">"The referral bonus is a nice touch. I've already told my friends!"</p>
               <div className="mt-2 flex items-center space-x-2">
-                <span className="font-semibold text-green-600">— Kwame B., Tamale</span>
+                <span className="font-semibold text-blue-600">— Kwame B., Tamale</span>
               </div>
             </div>
           </div>
@@ -290,25 +289,25 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 flex flex-col justify-center"
+          className="bg-white rounded-2xl shadow-xl p-8 flex flex-col justify-center"
         >
-          <h3 className="text-xl font-bold text-purple-700 mb-4 text-center">Frequently Asked Questions</h3>
+          <h3 className="text-xl font-bold text-blue-700 mb-4 text-center">Frequently Asked Questions</h3>
           <div className="space-y-4">
             {/* FAQ Accordion */}
             <details className="group border-b pb-2">
-              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-purple-700 transition">How long does it take to receive RMB?</summary>
+              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-blue-700 transition">How long does it take to receive RMB?</summary>
               <p className="mt-2 text-gray-600 text-sm">Most transfers are completed within minutes, 24/7. In rare cases, it may take up to 1 hour.</p>
             </details>
             <details className="group border-b pb-2">
-              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-purple-700 transition">Is my money safe?</summary>
+              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-blue-700 transition">Is my money safe?</summary>
               <p className="mt-2 text-gray-600 text-sm">Yes! We use secure payment channels and never share your data. Your funds are protected at every step.</p>
             </details>
             <details className="group border-b pb-2">
-              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-purple-700 transition">Can I refer friends?</summary>
+              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-blue-700 transition">Can I refer friends?</summary>
               <p className="mt-2 text-gray-600 text-sm">Absolutely! Use your referral link to invite friends and earn cash rewards for every successful transaction.</p>
             </details>
             <details className="group">
-              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-purple-700 transition">What payment methods do you accept?</summary>
+              <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-blue-700 transition">What payment methods do you accept?</summary>
               <p className="mt-2 text-gray-600 text-sm">We accept all major Ghanaian mobile money networks (MTN, Vodafone, AirtelTigo) and in-person payments at our office.</p>
             </details>
           </div>
@@ -331,7 +330,7 @@ export default function LandingPage() {
           </svg>
           Chat on WhatsApp
         </Button>
-      </div>
+        </div>
 
       {/* Footer */}
       <footer className="text-center text-gray-500 py-8">
@@ -375,7 +374,7 @@ export default function LandingPage() {
             </Button>
             <Button 
               onClick={handleReferralSubmit}
-              className="bg-pink-600 hover:bg-pink-700"
+              className="bg-orange-600 hover:bg-orange-700"
             >
               Create Referral Link
             </Button>
