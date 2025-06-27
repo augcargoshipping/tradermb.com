@@ -231,7 +231,7 @@ function PurchaseForm() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-lg sm:text-2xl font-extrabold uppercase tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent drop-shadow select-none">TRADE RMB</h1>
+              <h1 className="text-lg sm:text-2xl font-extrabold uppercase tracking-tight text-red-700 drop-shadow select-none">TRADE RMB</h1>
               <p className="text-sm text-gray-600">Purchase Chinese Yuan</p>
             </div>
           </div>
@@ -378,7 +378,7 @@ function PurchaseForm() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg text-lg transition-colors duration-200 disabled:opacity-50"
+                className="w-full bg-red-700 hover:bg-red-800 text-white font-bold px-6 py-3 rounded-lg text-lg transition-colors duration-200 disabled:opacity-50"
               >
                 {isSubmitting ? "Submitting..." : "Submit & Pay"}
               </Button>
