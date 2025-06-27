@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Upload, Calculator } from "lucide-react"
+import { ArrowLeft, Upload, Calculator, ChevronLeft, ChevronRight } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -27,6 +27,44 @@ interface FormErrors {
   alipayQR?: string
 }
 
+const testimonials = [
+  {
+    id: 1,
+    name: "Nana A.",
+    location: "Accra",
+    text: "Super fast payment! My RMB was funded in just 3 minutes. The process was so smooth and the rates are unbeatable.",
+    rating: 5
+  },
+  {
+    id: 2,
+    name: "Linda M.",
+    location: "Kumasi", 
+    text: "I was skeptical at first, but the payment came through instantly. Great customer service and very reliable platform.",
+    rating: 5
+  },
+  {
+    id: 3,
+    name: "Kwame B.",
+    location: "Tamale",
+    text: "Best exchange service I've used. The speed is incredible - from payment to receiving RMB in under 5 minutes!",
+    rating: 5
+  },
+  {
+    id: 4,
+    name: "Sarah K.",
+    location: "Cape Coast",
+    text: "Amazing experience! The referral bonus is a nice touch. I've already recommended it to all my business partners.",
+    rating: 5
+  },
+  {
+    id: 5,
+    name: "Michael O.",
+    location: "Tema",
+    text: "Lightning fast service! I needed RMB urgently for my supplier and got it within minutes. Highly recommend!",
+    rating: 5
+  }
+]
+
 function PurchaseForm() {
   const router = useRouter()
   const searchParams = useSearchParams();
@@ -43,6 +81,7 @@ function PurchaseForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [exchangeRate, setExchangeRate] = useState<number | null>(null)
   const [loadingRate, setLoadingRate] = useState(true)
+  const [currentTestimonial, setCurrentTestimonial] = useState(0)
 
   // Prefill referralName from ?ref= param if present
   useEffect(() => {
@@ -52,6 +91,14 @@ function PurchaseForm() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Auto-rotate testimonials
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch the current exchange rate
   useEffect(() => {
@@ -178,13 +225,24 @@ function PurchaseForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-pink-50 py-8 px-4">
       <div className="max-w-lg mx-auto">
-        <div className="flex items-center mb-6">
-          <Button variant="ghost" size="sm" onClick={handleGoBack} className="mr-3">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-lg sm:text-2xl font-extrabold uppercase tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent drop-shadow select-none">TRADE RMB</h1>
-            <p className="text-sm text-gray-600">Purchase Chinese Yuan</p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <Button variant="ghost" size="sm" onClick={handleGoBack} className="mr-3">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-lg sm:text-2xl font-extrabold uppercase tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent drop-shadow select-none">TRADE RMB</h1>
+              <p className="text-sm text-gray-600">Purchase Chinese Yuan</p>
+            </div>
+          </div>
+          
+          <div className="text-right">
+            <div className="bg-white rounded-lg shadow-md px-3 py-2 border border-gray-200">
+              <p className="text-xs text-gray-500 font-medium">Current Rate</p>
+              <p className="text-sm font-bold text-green-700">
+                {loadingRate ? "Loading..." : exchangeRate ? `1 GHS = ${exchangeRate.toFixed(2)} RMB` : "Unavailable"}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -327,6 +385,64 @@ function PurchaseForm() {
             </form>
           </CardContent>
         </Card>
+
+        {/* Testimonials Section */}
+        <div className="mt-8 bg-white rounded-2xl shadow-xl p-6">
+          <h3 className="text-xl font-bold text-center text-gray-900 mb-6">What Our Customers Say</h3>
+          
+          <div className="relative">
+            {/* Testimonial Display */}
+            <div className="text-center mb-4">
+              <div className="flex justify-center mb-3">
+                {[...Array(5)].map((_, i) => (
+                  <svg key={i} className={`w-5 h-5 ${i < testimonials[currentTestimonial].rating ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-gray-700 italic text-sm leading-relaxed mb-3">
+                "{testimonials[currentTestimonial].text}"
+              </p>
+              <div className="text-sm">
+                <span className="font-semibold text-gray-900">{testimonials[currentTestimonial].name}</span>
+                <span className="text-gray-500"> • {testimonials[currentTestimonial].location}</span>
+              </div>
+            </div>
+
+            {/* Navigation Dots */}
+            <div className="flex justify-center space-x-2 mb-4">
+              {testimonials.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentTestimonial(index)}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    index === currentTestimonial ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Navigation Arrows */}
+            <button
+              onClick={() => setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length)}
+              className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-shadow"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            </button>
+            <button
+              onClick={() => setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)}
+              className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-shadow"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </button>
+          </div>
+
+          <div className="text-center mt-4">
+            <p className="text-xs text-gray-500">
+              Join {testimonials.length * 100}+ satisfied customers who trust TRADE RMB
+            </p>
+          </div>
+        </div>
 
         <div className="text-center mt-8 text-sm text-gray-500">
           <p>Secure • Fast • Reliable</p>

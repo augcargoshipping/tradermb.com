@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,32 +15,43 @@ import GreetingBanner from "./components/GreetingBanner"
 
 export default function LandingPage() {
   const router = useRouter()
-const [rate, setRate] = useState<number | null>(null)
-const [loadingRate, setLoadingRate] = useState(true)
+  const searchParams = useSearchParams()
+  const [rate, setRate] = useState<number | null>(null)
+  const [loadingRate, setLoadingRate] = useState(true)
   const [navShadow, setNavShadow] = useState(false)
   const { toast } = useToast();
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [referralName, setReferralName] = useState("");
   const [userName, setUserName] = useState("");
 
-useEffect(() => {
-  async function loadRate() {
-    try {
-        const response = await fetch("/api/fetch-rate")
-        const data = await response.json()
-        if (data.success && data.rate !== null) {
-          setRate(data.rate)
-        } else {
-          setRate(null)
-        }
-      } catch {
-      setRate(null)
-    } finally {
-      setLoadingRate(false)
+  // Handle referral parameter from URL
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      const decodedRef = decodeURIComponent(ref);
+      setReferralName(decodedRef);
+      setUserName(decodedRef);
     }
-  }
-  loadRate()
-}, [])
+  }, [searchParams]);
+
+  useEffect(() => {
+    async function loadRate() {
+      try {
+          const response = await fetch("/api/fetch-rate")
+          const data = await response.json()
+          if (data.success && data.rate !== null) {
+            setRate(data.rate)
+          } else {
+            setRate(null)
+          }
+        } catch {
+        setRate(null)
+      } finally {
+        setLoadingRate(false)
+      }
+    }
+    loadRate()
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -71,7 +82,8 @@ useEffect(() => {
     setUserName(referralName);
     setShowReferralModal(false);
     
-    const url = `https://www.tradermb.com?ref=${encodeURIComponent(referralName)}`;
+    const currentDomain = window.location.origin;
+    const url = `${currentDomain}?ref=${encodeURIComponent(referralName)}`;
     
     if (navigator.share) {
       try {
