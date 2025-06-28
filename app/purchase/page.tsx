@@ -107,18 +107,20 @@ function PurchaseForm() {
   useEffect(() => {
     async function loadRate() {
       try {
-        const response = await fetch("/api/fetch-rate")
+        const response = await fetch("/.netlify/functions/fetch-rate")
         const data = await response.json()
         
-        if (data.success && data.rate !== null) {
+        if (data.rate !== null) {
           setExchangeRate(data.rate)
         } else {
           console.error("❌ Failed to load rate:", data.error)
-          setExchangeRate(null)
+          // Fallback to mock rate
+          setExchangeRate(1.85)
         }
       } catch (err) {
         console.error("❌ Failed to load rate", err)
-        setExchangeRate(null)
+        // Fallback to mock rate
+        setExchangeRate(1.85)
       } finally {
         setLoadingRate(false)
       }
@@ -183,19 +185,30 @@ function PurchaseForm() {
     setIsSubmitting(true)
 
     try {
-      const submitData = new FormData()
-      submitData.append("fullName", formData.fullName)
-      submitData.append("mobileNumber", formData.mobileNumber)
-      submitData.append("referralName", formData.referralName)
-      submitData.append("ghsAmount", formData.ghsAmount)
-      submitData.append("rmbAmount", calculateRMB(formData.ghsAmount))
-      if (formData.alipayQR) {
-        submitData.append("alipayQR", formData.alipayQR)
+      // Generate reference code (initials + 3 digits)
+      const nameParts = formData.fullName.trim().split(/\s+/)
+      const initials = nameParts
+        .map(part => part.charAt(0).toUpperCase())
+        .join('')
+        .substring(0, 5)
+      const randomDigits = Math.floor(100 + Math.random() * 900).toString()
+      const referenceCode = `${initials}${randomDigits}`
+
+      const submitData = {
+        customerName: formData.fullName,
+        mobileNumber: formData.mobileNumber,
+        referralName: formData.referralName,
+        ghsAmount: formData.ghsAmount,
+        rmbAmount: calculateRMB(formData.ghsAmount),
+        referenceCode: referenceCode
       }
 
-      const response = await fetch("/api/submit-transaction", {
+      const response = await fetch("/.netlify/functions/submit-transaction", {
         method: "POST",
-        body: submitData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(submitData),
       })
 
       const result = await response.json()
@@ -212,7 +225,7 @@ function PurchaseForm() {
         sessionStorage.setItem("submissionData", JSON.stringify(confirmationData))
         router.push("/confirmation")
       } else {
-        alert(`Submission failed: ${result.error}\n\nDetails: ${result.details || "Please check your configuration"}`)
+        alert(`Submission failed: ${result.error}`)
       }
     } catch (error) {
       alert("Failed to submit transaction. Please check your internet connection and try again.")

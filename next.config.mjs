@@ -13,6 +13,11 @@ const nextConfig = {
     domains: [],
     unoptimized: true,
   },
+  // Static export for Namecheap hosting
+  output: 'export',
+  trailingSlash: true,
+  // Disable server-side features for static export
+  distDir: 'out',
   // Environment variables configuration
   env: {
     // These will be available at build time

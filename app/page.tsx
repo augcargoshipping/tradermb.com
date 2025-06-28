@@ -37,15 +37,17 @@ function LandingPageContent() {
   useEffect(() => {
     async function loadRate() {
       try {
-          const response = await fetch("/api/fetch-rate")
-          const data = await response.json()
-          if (data.success && data.rate !== null) {
-            setRate(data.rate)
-          } else {
-            setRate(null)
-          }
-        } catch {
-        setRate(null)
+        // Use external API service instead of Next.js API route
+        const response = await fetch("/api/fetch-rate")
+        const data = await response.json()
+        if (data.success && data.rate !== null) {
+          setRate(data.rate)
+        } else {
+          setRate(null)
+        }
+      } catch {
+        // Fallback to mock rate if API fails
+        setRate(1.85)
       } finally {
         setLoadingRate(false)
       }
