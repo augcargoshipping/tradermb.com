@@ -1,9 +1,0 @@
-{
-  "name": "netlify-functions",
-  "version": "1.0.0",
-  "description": "Netlify Functions for RMB Trade app",
-  "main": "index.js",
-  "dependencies": {
-    "node-fetch": "^3.3.2"
-  }
-} 

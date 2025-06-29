@@ -12,6 +12,21 @@ export interface CustomerRecord {
   Rate?: number
   Rate_Type?: string
   QR_Code?: { url: string }[]
+  user_id?: string
+}
+
+export interface UserRecord {
+  Full_Name: string
+  Username: string
+  Email: string
+  Phone: string
+  Password: string
+  Created_At?: Date
+  Status: "active" | "inactive"
+  Avatar_URL?: string
+  User_ID?: string
+  reset_token?: string
+  reset_token_expiry?: string // Stored as timestamp string
 }
 
 export interface AirtableResponse {
@@ -31,13 +46,17 @@ export class AirtableService {
   private baseId: string
   private token: string
   private tableName: string
+  private usersTableName: string
   private baseUrl: string
+  private usersBaseUrl: string
 
   constructor() {
     this.baseId = process.env.AIRTABLE_BASE_ID || ""
     this.token = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN || ""
     this.tableName = "CUSTOMERS"
+    this.usersTableName = "USERS"
     this.baseUrl = `https://api.airtable.com/v0/${this.baseId}/${this.tableName}`
+    this.usersBaseUrl = `https://api.airtable.com/v0/${this.baseId}/${this.usersTableName}`
 
     if (!this.baseId || !this.token) {
       console.warn("⚠️ Airtable credentials not configured")
@@ -70,6 +89,199 @@ export class AirtableService {
     return data
   }
 
+  // User Management Methods
+  async createUserRecord(data: Omit<UserRecord, "Status">): Promise<string | null> {
+    const userData: UserRecord = {
+      ...data,
+      Status: "active",
+      User_ID: this.generateUserId(),
+    }
+
+    // Remove Created_At if it exists - let Airtable handle it automatically
+    if (userData.Created_At) {
+      delete userData.Created_At
+    }
+
+    const response = await fetch(this.usersBaseUrl, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ fields: userData }),
+    })
+
+    const result = await this.handleAirtableResponse(response)
+    return result.id
+  }
+
+  async getUsersByEmail(email: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.usersBaseUrl}?filterByFormula={Email}='${email}'`, {
+        headers: this.getHeaders(),
+      })
+
+      const data = await this.handleAirtableResponse(response)
+      return data.records || []
+    } catch (error) {
+      console.error("Error fetching user by email:", error)
+      return []
+    }
+  }
+
+  async getUsersByUsername(username: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.usersBaseUrl}?filterByFormula={Username}='${username}'`, {
+        headers: this.getHeaders(),
+      })
+
+      const data = await this.handleAirtableResponse(response)
+      return data.records || []
+    } catch (error) {
+      console.error("Error fetching user by username:", error)
+      return []
+    }
+  }
+
+  async getUserByEmailOrUsername(identifier: string): Promise<any | null> {
+    try {
+      // Try email first
+      const emailUsers = await this.getUsersByEmail(identifier)
+      if (emailUsers.length > 0) {
+        return emailUsers[0]
+      }
+
+      // Try username
+      const usernameUsers = await this.getUsersByUsername(identifier)
+      if (usernameUsers.length > 0) {
+        return usernameUsers[0]
+      }
+
+      return null
+    } catch (error) {
+      console.error("Error fetching user:", error)
+      return null
+    }
+  }
+
+  async getUsersByResetToken(resetToken: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.usersBaseUrl}?filterByFormula={reset_token}='${resetToken}'`, {
+        headers: this.getHeaders(),
+      })
+
+      const data = await this.handleAirtableResponse(response)
+      return data.records || []
+    } catch (error) {
+      console.error("Error fetching user by reset token:", error)
+      return []
+    }
+  }
+
+  async updateUserProfile(recordId: string, updates: Partial<UserRecord>): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.usersBaseUrl}/${recordId}`, {
+        method: "PATCH",
+        headers: this.getHeaders(),
+        body: JSON.stringify({ fields: updates }),
+      })
+
+      await this.handleAirtableResponse(response)
+      return true
+    } catch (error) {
+      console.error("Error updating user profile:", error)
+      return false
+    }
+  }
+
+  async getUserOrders(userId: string): Promise<any[]> {
+    try {
+      console.log(`🔍 Fetching orders for user: ${userId}`);
+      
+      // Check if user exists in USERS table
+      const userResponse = await fetch(`${this.usersBaseUrl}?filterByFormula={User_ID}='${userId}'`, {
+        headers: this.getHeaders(),
+      });
+      const userData = await this.handleAirtableResponse(userResponse);
+      console.log(`👤 User lookup result: ${userData.records?.length || 0} users found`);
+      
+      if (!userData.records || userData.records.length === 0) {
+        // User not found, return empty array
+        console.log(`❌ User ${userId} not found in USERS table`);
+        return [];
+      }
+      
+      // Get user's email and phone to also search by those fields
+      const user = userData.records[0];
+      const userEmail = user.fields.Email;
+      const userPhone = user.fields.Phone;
+      
+      console.log(`📧 Searching for orders with user_id: ${userId}, email: ${userEmail}, phone: ${userPhone}`);
+      
+      // Try multiple search strategies
+      let allOrders = [];
+      
+      // Strategy 1: Search by user_id field
+      try {
+        const response1 = await fetch(`${this.baseUrl}?filterByFormula={user_id}='${userId}'&sort[0][field]=Submitted_At&sort[0][direction]=desc`, {
+          headers: this.getHeaders(),
+        });
+        const data1 = await this.handleAirtableResponse(response1);
+        console.log(`📋 Strategy 1 (user_id): Found ${data1.records?.length || 0} orders`);
+        if (data1.records) allOrders = allOrders.concat(data1.records);
+      } catch (error) {
+        console.log(`❌ Strategy 1 failed:`, error);
+      }
+      
+      // Strategy 2: Search by email (if user has email)
+      if (userEmail) {
+        try {
+          const response2 = await fetch(`${this.baseUrl}?filterByFormula={Customer_Name}='${user.fields.Full_Name}'&sort[0][field]=Submitted_At&sort[0][direction]=desc`, {
+            headers: this.getHeaders(),
+          });
+          const data2 = await this.handleAirtableResponse(response2);
+          console.log(`📋 Strategy 2 (name match): Found ${data2.records?.length || 0} orders`);
+          if (data2.records) allOrders = allOrders.concat(data2.records);
+        } catch (error) {
+          console.log(`❌ Strategy 2 failed:`, error);
+        }
+      }
+      
+      // Strategy 3: Search by phone number (if user has phone)
+      if (userPhone) {
+        try {
+          const response3 = await fetch(`${this.baseUrl}?filterByFormula={Mobile_Number}='${userPhone}'&sort[0][field]=Submitted_At&sort[0][direction]=desc`, {
+            headers: this.getHeaders(),
+          });
+          const data3 = await this.handleAirtableResponse(response3);
+          console.log(`📋 Strategy 3 (phone match): Found ${data3.records?.length || 0} orders`);
+          if (data3.records) allOrders = allOrders.concat(data3.records);
+        } catch (error) {
+          console.log(`❌ Strategy 3 failed:`, error);
+        }
+      }
+      
+      // Remove duplicates based on record ID
+      const uniqueOrders = allOrders.filter((order, index, self) => 
+        index === self.findIndex(o => o.id === order.id)
+      );
+      
+      console.log(`📊 Total unique orders found: ${uniqueOrders.length}`);
+      
+      if (uniqueOrders.length > 0) {
+        console.log(`📊 Sample order: ${uniqueOrders[0].fields.Reference_Code} - Status: ${uniqueOrders[0].fields.Status}`);
+        console.log(`📊 Order fields:`, Object.keys(uniqueOrders[0].fields));
+      }
+      
+      return uniqueOrders;
+    } catch (error) {
+      console.error("Error fetching user orders:", error);
+      return [];
+    }
+  }
+
+  private generateUserId(): string {
+    return `USER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  // Existing methods...
   async createRecord(data: Omit<CustomerRecord, "Status">): Promise<string | null> {
     const recordData: CustomerRecord = {
       ...data,
@@ -202,20 +414,20 @@ export class AirtableService {
         Mobile_Number: "0000000000",
         GHS_Amount: 0,
         RMB_Amount: 0,
-        Reference_Code: "RATE-" + Date.now(),
-        Status: "Completed" as const,
+        Reference_Code: "RATE",
         Submitted_At: new Date().toISOString(),
         Rate: rate,
-        Rate_Type: "EXCHANGE_RATE"
+        Rate_Type: "EXCHANGE_RATE",
+        Status: "Completed" as const
       }
 
-      const response = await fetch(this.baseUrl, {
+      const createResponse = await fetch(this.baseUrl, {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify({ fields: recordData }),
       })
 
-      await this.handleAirtableResponse(response)
+      await this.handleAirtableResponse(createResponse)
       console.log("✅ Created new rate record")
       return true
     } catch (error) {

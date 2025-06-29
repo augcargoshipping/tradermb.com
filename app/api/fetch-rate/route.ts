@@ -10,10 +10,12 @@ export async function GET() {
     const token = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN
 
     if (!baseId || !token) {
+      console.log("⚠️ Missing Airtable credentials - using fallback rate")
       return NextResponse.json({
-        success: false,
-        error: "Missing Airtable credentials",
-        rate: null,
+        success: true,
+        rate: 1.85,
+        message: "Using fallback rate (Airtable not configured)",
+        fallback: true
       })
     }
 
@@ -27,10 +29,12 @@ export async function GET() {
         message: "Rate fetched successfully",
       })
     } else {
+      console.log("⚠️ No rate found in Airtable - using fallback rate")
       return NextResponse.json({
-        success: false,
-        error: "Rate not found in Airtable",
-        rate: null,
+        success: true,
+        rate: 1.85,
+        message: "Using fallback rate (no rate found in Airtable)",
+        fallback: true,
         troubleshooting: [
           "1. Check if there's a 'Rate' field in your CUSTOMERS table",
           "2. Ensure at least one record has a Rate value",
@@ -41,10 +45,11 @@ export async function GET() {
   } catch (error) {
     console.error("❌ Rate fetch error:", error)
     return NextResponse.json({
-      success: false,
-      error: "Failed to fetch rate",
-      rate: null,
-      details: error instanceof Error ? error.message : "Unknown error",
+      success: true,
+      rate: 1.85,
+      message: "Using fallback rate (error occurred)",
+      fallback: true,
+      error: error instanceof Error ? error.message : "Unknown error",
     })
   }
 } 

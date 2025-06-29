@@ -107,11 +107,14 @@ function PurchaseForm() {
   useEffect(() => {
     async function loadRate() {
       try {
-        const response = await fetch("/.netlify/functions/fetch-rate")
+        const response = await fetch("/api/fetch-rate")
         const data = await response.json()
         
-        if (data.rate !== null) {
+        if (data.success && data.rate !== null) {
           setExchangeRate(data.rate)
+          if (data.fallback) {
+            console.log("⚠️ Using fallback rate:", data.message)
+          }
         } else {
           console.error("❌ Failed to load rate:", data.error)
           // Fallback to mock rate
@@ -185,35 +188,38 @@ function PurchaseForm() {
     setIsSubmitting(true)
 
     try {
-      // Generate reference code (initials + 3 digits)
-      const nameParts = formData.fullName.trim().split(/\s+/)
-      const initials = nameParts
-        .map(part => part.charAt(0).toUpperCase())
-        .join('')
-        .substring(0, 5)
-      const randomDigits = Math.floor(100 + Math.random() * 900).toString()
-      const referenceCode = `${initials}${randomDigits}`
-
-      const submitData = {
-        customerName: formData.fullName,
+      console.log("🚀 Starting form submission...")
+      console.log("📝 Form data:", {
+        fullName: formData.fullName,
         mobileNumber: formData.mobileNumber,
-        referralName: formData.referralName,
         ghsAmount: formData.ghsAmount,
-        rmbAmount: calculateRMB(formData.ghsAmount),
-        referenceCode: referenceCode
-      }
-
-      const response = await fetch("/.netlify/functions/submit-transaction", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(submitData),
+        hasQR: !!formData.alipayQR,
+        qrSize: formData.alipayQR?.size,
+        qrName: formData.alipayQR?.name
       })
 
+      const submitData = new FormData()
+      submitData.append("fullName", formData.fullName)
+      submitData.append("mobileNumber", formData.mobileNumber)
+      submitData.append("referralName", formData.referralName)
+      submitData.append("ghsAmount", formData.ghsAmount)
+      submitData.append("rmbAmount", calculateRMB(formData.ghsAmount))
+      if (formData.alipayQR) {
+        submitData.append("alipayQR", formData.alipayQR)
+      }
+
+      console.log("📤 Sending request to /api/submit-transaction...")
+      const response = await fetch("/api/submit-transaction", {
+        method: "POST",
+        body: submitData,
+      })
+
+      console.log("📥 Response received:", response.status, response.statusText)
       const result = await response.json()
+      console.log("📄 Response data:", result)
 
       if (result.success) {
+        console.log("✅ Form submitted successfully!")
         const confirmationData = {
           ...formData,
           rmbAmount: calculateRMB(formData.ghsAmount),
@@ -225,9 +231,11 @@ function PurchaseForm() {
         sessionStorage.setItem("submissionData", JSON.stringify(confirmationData))
         router.push("/confirmation")
       } else {
-        alert(`Submission failed: ${result.error}`)
+        console.error("❌ Form submission failed:", result.error)
+        alert(`Submission failed: ${result.error}\n\nDetails: ${result.details || "Please check your configuration"}`)
       }
     } catch (error) {
+      console.error("💥 Form submission error:", error)
       alert("Failed to submit transaction. Please check your internet connection and try again.")
     } finally {
       setIsSubmitting(false)
@@ -239,8 +247,21 @@ function PurchaseForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-pink-50 py-8 px-4">
-      <div className="max-w-lg mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+      {/* Light Logo Background */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <div className="absolute top-10 left-10 w-32 h-32">
+          <img src="/logo.png" alt="" className="w-full h-full object-contain opacity-20" />
+        </div>
+        <div className="absolute top-40 right-20 w-24 h-24">
+          <img src="/logo.png" alt="" className="w-full h-full object-contain opacity-15" />
+        </div>
+        <div className="absolute bottom-20 left-1/4 w-28 h-28">
+          <img src="/logo.png" alt="" className="w-full h-full object-contain opacity-10" />
+        </div>
+      </div>
+      
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <Button variant="ghost" size="sm" onClick={handleGoBack} className="mr-3">
@@ -461,6 +482,14 @@ function PurchaseForm() {
         </div>
 
         <div className="text-center mt-8 text-sm text-gray-500">
+          <div className="flex items-center justify-center space-x-2 mb-2">
+            <img 
+              src="/logo.png" 
+              alt="TRADE RMB Logo" 
+              className="w-6 h-6 object-contain opacity-70"
+            />
+            <span className="font-semibold text-gray-600">TRADE RMB</span>
+          </div>
           <p>Secure • Fast • Reliable</p>
           <p className="mt-1">© 2025 TRADE RMB. All rights reserved.</p>
         </div>
