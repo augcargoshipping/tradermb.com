@@ -37,28 +37,40 @@ function LandingPageContent() {
   }, [searchParams]);
 
   useEffect(() => {
+    let isMounted = true;
+    
     async function loadRate() {
       try {
-        // Use external API service instead of Next.js API route
+        console.log("🔍 Loading rate from API...")
         const response = await fetch("/api/fetch-rate")
         const data = await response.json()
-        if (data.success && data.rate !== null) {
-          setRate(data.rate)
-          if (data.fallback) {
-            console.log("⚠️ Using fallback rate:", data.message)
+        console.log("📊 API response:", data)
+        
+        if (isMounted) {
+          if (data.success && data.rate !== null) {
+            console.log("✅ Setting rate to:", data.rate)
+            setRate(data.rate)
+          } else {
+            console.error("❌ Failed to load rate:", data.error)
+            setRate(null)
           }
-        } else {
-          setRate(null)
+          setLoadingRate(false)
         }
-      } catch {
-        // Fallback to mock rate if API fails
-        setRate(1.85)
-      } finally {
-        setLoadingRate(false)
+      } catch (error) {
+        console.error("❌ Failed to load rate:", error)
+        if (isMounted) {
+          setRate(null)
+          setLoadingRate(false)
+        }
       }
     }
+    
     loadRate()
-  }, [])
+    
+    return () => {
+      isMounted = false;
+    }
+  }, []) // Empty dependency array to run only once
 
   useEffect(() => {
     const handleScroll = () => {

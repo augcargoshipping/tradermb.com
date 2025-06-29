@@ -20,7 +20,7 @@ export interface TransactionResponse {
 // Fetch exchange rate from external service
 export async function fetchExchangeRate(): Promise<ExchangeRateResponse> {
   try {
-    // For now, return a mock rate - you'll need to set up an external API
+    // For now, return null - you'll need to set up an external API
     // You can use services like:
     // - Vercel Functions (free tier)
     // - Netlify Functions (free tier)
@@ -28,8 +28,9 @@ export async function fetchExchangeRate(): Promise<ExchangeRateResponse> {
     // - Supabase Edge Functions (free tier)
     
     return {
-      success: true,
-      rate: 1.85 // Mock rate - replace with actual API call
+      success: false,
+      rate: null,
+      error: 'External API not configured'
     };
   } catch (error) {
     return {

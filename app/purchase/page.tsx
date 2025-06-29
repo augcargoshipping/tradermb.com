@@ -112,18 +112,15 @@ function PurchaseForm() {
         
         if (data.success && data.rate !== null) {
           setExchangeRate(data.rate)
-          if (data.fallback) {
-            console.log("⚠️ Using fallback rate:", data.message)
-          }
         } else {
           console.error("❌ Failed to load rate:", data.error)
-          // Fallback to mock rate
-          setExchangeRate(1.85)
+          // Don't set a fallback rate - let the user see that rate is unavailable
+          setExchangeRate(null)
         }
       } catch (err) {
         console.error("❌ Failed to load rate", err)
-        // Fallback to mock rate
-        setExchangeRate(1.85)
+        // Don't set a fallback rate - let the user see that rate is unavailable
+        setExchangeRate(null)
       } finally {
         setLoadingRate(false)
       }
