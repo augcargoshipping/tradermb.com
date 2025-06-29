@@ -98,12 +98,15 @@ export async function POST(request: NextRequest) {
     const referralName = formData.get("referralName") as string;
     const ghsAmount = formData.get("ghsAmount") as string;
     const rmbAmount = formData.get("rmbAmount") as string;
+    const exchangeRate = formData.get("exchangeRate") as string;
     const qrFile = formData.get("alipayQR") as File;
 
     console.log("📝 Form data received:", {
       fullName: !!fullName,
       mobileNumber: !!mobileNumber,
       ghsAmount: !!ghsAmount,
+      rmbAmount: !!rmbAmount,
+      exchangeRate: exchangeRate,
       qrFile: !!qrFile,
       qrFileSize: qrFile?.size,
       qrFileName: qrFile?.name,
@@ -113,6 +116,13 @@ export async function POST(request: NextRequest) {
     if (!fullName || !mobileNumber || !ghsAmount || !qrFile) {
       console.log("❌ Missing required fields:", { fullName: !!fullName, mobileNumber: !!mobileNumber, ghsAmount: !!ghsAmount, qrFile: !!qrFile });
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Validate exchange rate
+    const rateValue = parseFloat(exchangeRate);
+    if (isNaN(rateValue) || rateValue <= 0) {
+      console.log("❌ Invalid exchange rate:", exchangeRate);
+      return NextResponse.json({ error: "Invalid exchange rate" }, { status: 400 });
     }
 
     // Upload file to Cloudinary and get URL
@@ -174,6 +184,7 @@ export async function POST(request: NextRequest) {
       RMB_Amount: parseFloat(rmbAmount),
       Reference_Code: referenceCode,
       Submitted_At: new Date().toISOString(),
+      Rate: parseFloat(exchangeRate) || undefined,
       ...(qrFileUrl && {
         QR_CODE: qrFileUrl, // Store the Cloudinary URL as text
       }),
@@ -207,7 +218,10 @@ export async function POST(request: NextRequest) {
       qrUploaded: !!qrFileUrl,
       qrUrl: qrFileUrl,
       linkedToUser: !!userId,
-      userId: userId
+      userId: userId,
+      exchangeRate: parseFloat(exchangeRate),
+      ghsAmount: parseFloat(ghsAmount),
+      rmbAmount: parseFloat(rmbAmount)
     });
 
   } catch (error) {

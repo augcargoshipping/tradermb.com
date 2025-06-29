@@ -204,6 +204,7 @@ function PurchaseForm() {
       submitData.append("referralName", formData.referralName)
       submitData.append("ghsAmount", formData.ghsAmount)
       submitData.append("rmbAmount", calculateRMB(formData.ghsAmount))
+      submitData.append("exchangeRate", exchangeRate?.toString() || "0")
       if (formData.alipayQR) {
         submitData.append("alipayQR", formData.alipayQR)
       }
