@@ -265,9 +265,16 @@ function PurchaseForm() {
             <Button variant="ghost" size="sm" onClick={handleGoBack} className="mr-3">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-lg sm:text-2xl font-extrabold uppercase tracking-tight text-red-700 drop-shadow select-none">TRADE RMB</h1>
-              <p className="text-sm text-gray-600">Purchase Chinese Yuan</p>
+            <div className="flex items-center space-x-2">
+              <img 
+                src="/logo.png" 
+                alt="TRADE RMB Logo" 
+                className="w-8 h-8 object-contain"
+              />
+              <div>
+                <h1 className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight drop-shadow select-none">TRADE RMB</h1>
+                <p className="text-sm text-gray-600">Purchase Chinese Yuan</p>
+              </div>
             </div>
           </div>
           
@@ -281,9 +288,9 @@ function PurchaseForm() {
           </div>
         </div>
 
-        <Card className="shadow-xl bg-white rounded-2xl">
+        <Card className="shadow-xl bg-white/80 backdrop-blur-sm rounded-2xl border-0">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl text-gray-900">RMB Purchase Form</CardTitle>
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">RMB Purchase Form</CardTitle>
             <CardDescription className="text-gray-600">
               Fill in your details to buy Chinese Yuan with Ghana Cedis
             </CardDescription>
@@ -299,7 +306,7 @@ function PurchaseForm() {
                   placeholder="Enter your full name"
                   value={formData.fullName}
                   onChange={(e) => handleInputChange("fullName", e.target.value)}
-                  className={`${errors.fullName ? "border-red-500" : "border-gray-300"} rounded-lg`}
+                  className={`${errors.fullName ? "border-red-500" : "border-gray-300"} rounded-lg focus:border-blue-500 focus:ring-blue-500`}
                   disabled={isSubmitting}
                 />
                 {errors.fullName && <p className="text-sm text-red-500">{errors.fullName}</p>}
@@ -313,7 +320,7 @@ function PurchaseForm() {
                   placeholder="e.g., 0241234567"
                   value={formData.mobileNumber}
                   onChange={(e) => handleInputChange("mobileNumber", e.target.value)}
-                  className={`${errors.mobileNumber ? "border-red-500" : "border-gray-300"} rounded-lg`}
+                  className={`${errors.mobileNumber ? "border-red-500" : "border-gray-300"} rounded-lg focus:border-blue-500 focus:ring-blue-500`}
                   disabled={isSubmitting}
                 />
                 {errors.mobileNumber && <p className="text-sm text-red-500">{errors.mobileNumber}</p>}
@@ -327,7 +334,7 @@ function PurchaseForm() {
                   placeholder="Who referred you?"
                   value={formData.referralName}
                   onChange={(e) => handleInputChange("referralName", e.target.value)}
-                  className="border-gray-300 rounded-lg"
+                  className="border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
                   disabled={isSubmitting}
                 />
               </div>
@@ -340,7 +347,7 @@ function PurchaseForm() {
                   placeholder="Enter amount in Ghana Cedis"
                   value={formData.ghsAmount}
                   onChange={(e) => handleInputChange("ghsAmount", e.target.value)}
-                  className={`${errors.ghsAmount ? "border-red-500" : "border-gray-300"} rounded-lg`}
+                  className={`${errors.ghsAmount ? "border-red-500" : "border-gray-300"} rounded-lg focus:border-blue-500 focus:ring-blue-500`}
                   min="0"
                   step="0.01"
                   disabled={isSubmitting}
@@ -373,7 +380,7 @@ function PurchaseForm() {
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleInputChange("alipayQR", e.target.files?.[0] || null)}
-                    className={`${errors.alipayQR ? "border-red-500" : "border-gray-300"} rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100`}
+                    className={`${errors.alipayQR ? "border-red-500" : "border-gray-300"} rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 focus:border-blue-500 focus:ring-blue-500`}
                     disabled={isSubmitting}
                   />
                   <Upload className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
@@ -413,7 +420,7 @@ function PurchaseForm() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-red-700 hover:bg-red-800 text-white font-bold px-6 py-3 rounded-lg text-lg transition-colors duration-200 disabled:opacity-50"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-6 py-3 rounded-lg text-lg transition-all duration-200 disabled:opacity-50 hover:scale-105"
               >
                 {isSubmitting ? "Submitting..." : "Submit & Pay"}
               </Button>
@@ -422,8 +429,8 @@ function PurchaseForm() {
         </Card>
 
         {/* Testimonials Section */}
-        <div className="mt-8 bg-white rounded-2xl shadow-xl p-6">
-          <h3 className="text-xl font-bold text-center text-gray-900 mb-6">What Our Customers Say</h3>
+        <div className="mt-8 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border-0">
+          <h3 className="text-xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">What Our Customers Say</h3>
           
           <div className="relative">
             {/* Testimonial Display */}

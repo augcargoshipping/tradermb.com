@@ -180,10 +180,10 @@ function LandingPageContent() {
               <Button
                 onClick={handleAuthClick}
                 variant="outline"
-                className="hidden sm:flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
               >
                 <User className="h-4 w-4" />
-                <span>Sign In</span>
+                <span className="hidden sm:inline">Sign In</span>
               </Button>
             )}
             <Button
