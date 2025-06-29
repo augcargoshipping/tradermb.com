@@ -77,6 +77,8 @@ const handler = NextAuth({
     error: '/auth/error',
   },
   debug: process.env.NEXTAUTH_DEBUG === 'true',
+  // Handle dynamic URLs for different environments
+  useSecureCookies: process.env.NODE_ENV === 'production',
 })
 
 export const { auth, signIn, signOut } = handler
