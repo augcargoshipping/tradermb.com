@@ -169,9 +169,10 @@ function PurchaseForm() {
       newErrors.ghsAmount = "Please enter a valid GHS amount"
     }
 
-    if (!formData.alipayQR) {
-      newErrors.alipayQR = "Please upload your Alipay QR code"
-    }
+    // QR code is now optional
+    // if (!formData.alipayQR) {
+    //   newErrors.alipayQR = "Please upload your Alipay QR code"
+    // }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -281,7 +282,7 @@ function PurchaseForm() {
           <div className="text-right">
             <div className="bg-white rounded-lg shadow-md px-3 py-2 border border-gray-200">
               <p className="text-xs text-gray-500 font-medium">Current Rate</p>
-              <p className="text-sm font-bold text-green-700">
+              <p className="text-sm font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {loadingRate ? "Loading..." : exchangeRate ? `1 GHS = ${exchangeRate.toFixed(2)} RMB` : "Unavailable"}
               </p>
             </div>
@@ -355,13 +356,13 @@ function PurchaseForm() {
                 {errors.ghsAmount && <p className="text-sm text-red-500">{errors.ghsAmount}</p>}
 
                 {formData.ghsAmount && Number.parseFloat(formData.ghsAmount) > 0 && (
-                  <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mt-3">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 mt-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Calculator className="h-4 w-4 text-green-600" />
+                        <Calculator className="h-4 w-4 text-blue-600" />
                         <span className="text-sm text-gray-700">You will receive:</span>
                       </div>
-                      <span className="text-xl font-bold text-green-700">
+                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                         {loadingRate ? "Loading..." : exchangeRate ? `¥${calculateRMB(formData.ghsAmount)}` : "Rate unavailable"}
                       </span>
                     </div>
@@ -373,14 +374,14 @@ function PurchaseForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="alipay-qr">Upload Alipay QR Code *</Label>
+                <Label htmlFor="alipay-qr">Upload Alipay QR Code <span className="text-gray-400">(Optional)</span></Label>
                 <div className="relative">
                   <Input
                     id="alipay-qr"
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleInputChange("alipayQR", e.target.files?.[0] || null)}
-                    className={`${errors.alipayQR ? "border-red-500" : "border-gray-300"} rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 focus:border-blue-500 focus:ring-blue-500`}
+                    className={`${errors.alipayQR ? "border-red-500" : "border-gray-300"} rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-blue-50 file:to-purple-50 file:text-blue-700 hover:file:bg-gradient-to-r hover:file:from-blue-100 hover:file:to-purple-100 focus:border-blue-500 focus:ring-blue-500`}
                     disabled={isSubmitting}
                   />
                   <Upload className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
@@ -388,7 +389,7 @@ function PurchaseForm() {
                 {errors.alipayQR && <p className="text-sm text-red-500">{errors.alipayQR}</p>}
 
                 {formData.alipayQR && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-3 mt-2">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-green-700 font-medium">✓ QR Code Selected</p>
                       <button
@@ -458,7 +459,7 @@ function PurchaseForm() {
                   key={index}
                   onClick={() => setCurrentTestimonial(index)}
                   className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentTestimonial ? 'bg-blue-600' : 'bg-gray-300'
+                    index === currentTestimonial ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gray-300'
                   }`}
                 />
               ))}

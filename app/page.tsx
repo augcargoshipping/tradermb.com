@@ -5,14 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, Users, ShieldCheck, Zap, User, LogOut } from "lucide-react"
+import { ArrowRight, Users, ShieldCheck, Zap, User, LogOut, Menu, X } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useSession, signOut } from "next-auth/react"
 import GreetingBanner from "./components/GreetingBanner"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 function LandingPageContent() {
   const router = useRouter()
@@ -22,16 +22,14 @@ function LandingPageContent() {
   const [loadingRate, setLoadingRate] = useState(true)
   const [navShadow, setNavShadow] = useState(false)
   const { toast } = useToast();
-  const [showReferralModal, setShowReferralModal] = useState(false);
-  const [referralName, setReferralName] = useState("");
   const [userName, setUserName] = useState("");
+  const isMobile = useIsMobile();
 
   // Handle referral parameter from URL
   useEffect(() => {
     const ref = searchParams.get('ref');
     if (ref) {
       const decodedRef = decodeURIComponent(ref);
-      setReferralName(decodedRef);
       setUserName(decodedRef);
     }
   }, [searchParams]);
@@ -86,47 +84,32 @@ function LandingPageContent() {
 
   const handleReferralClick = () => {
     if (session) {
-      // If user is signed in, show referral modal
-      setShowReferralModal(true);
+      // If user is signed in, create referral link with their name from database
+      const userName = session.user?.name || session.user?.email || "User";
+      const currentDomain = window.location.origin;
+      const url = `${currentDomain}?ref=${encodeURIComponent(userName)}`;
+      
+      if (navigator.share) {
+        try {
+          navigator.share({
+            title: "TRADE RMB Referral",
+            text: `Join TRADE RMB and get unbeatable rates! Use my referral link:`,
+            url,
+          });
+          toast({ title: "Referral link shared!" });
+        } catch {
+          // User cancelled share
+        }
+      } else {
+        navigator.clipboard.writeText(url);
+        toast({ 
+          title: "Referral link copied!", 
+          description: url 
+        });
+      }
     } else {
       // If user is not signed in, redirect to sign in
       router.push("/auth/signin");
-    }
-  }
-
-  const handleReferralSubmit = async () => {
-    if (!referralName.trim()) {
-      toast({ 
-        title: "Name required", 
-        description: "Please enter your full name to continue",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setUserName(referralName);
-    setShowReferralModal(false);
-    
-    const currentDomain = window.location.origin;
-    const url = `${currentDomain}?ref=${encodeURIComponent(referralName)}`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "TRADE RMB Referral",
-          text: `Join TRADE RMB and get unbeatable rates! Use my referral link:`,
-          url,
-        });
-        toast({ title: "Referral link shared!" });
-      } catch {
-        // User cancelled share
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast({ 
-        title: "Referral link copied!", 
-        description: url 
-      });
     }
   }
 
@@ -154,15 +137,17 @@ function LandingPageContent() {
               alt="TRADE RMB Logo" 
               className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
             />
-            <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight drop-shadow select-none">TRADE RMB</span>
+            <span className="text-base sm:text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight drop-shadow select-none">TRADE RMB</span>
           </div>
-          <div className="flex-1 flex justify-end items-center space-x-2">
+          
+          {/* Desktop Navigation */}
+          <div className="hidden sm:flex flex-1 justify-end items-center space-x-2">
             {session ? (
               <>
                 <Button
                   onClick={() => router.push("/dashboard")}
                   variant="outline"
-                  className="hidden sm:flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
                 >
                   <User className="h-4 w-4" />
                   <span>Dashboard</span>
@@ -183,7 +168,7 @@ function LandingPageContent() {
                 className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
               >
                 <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Sign In</span>
+                <span>Sign In</span>
               </Button>
             )}
             <Button
@@ -192,6 +177,48 @@ function LandingPageContent() {
               style={{ minWidth: '120px' }}
             >
               <span className="text-base sm:text-lg font-bold tracking-wide">BUY RMB</span>
+            </Button>
+          </div>
+
+          {/* Mobile Navigation - Direct Buttons */}
+          <div className="flex sm:hidden items-center space-x-2">
+            {session ? (
+              <>
+                <Button
+                  onClick={() => router.push("/dashboard")}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 text-xs"
+                >
+                  <User className="h-3 w-3" />
+                  <span>Dashboard</span>
+                </Button>
+                <Button
+                  onClick={handleSignOut}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:text-red-600 p-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={handleAuthClick}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 text-xs"
+              >
+                <User className="h-3 w-3" />
+                <span>Sign In</span>
+              </Button>
+            )}
+            <Button
+              onClick={handleBuyRMB}
+              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow-lg hover:scale-105 hover:shadow-xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+              style={{ minWidth: '80px' }}
+            >
+              <span className="font-bold tracking-wide">BUY RMB</span>
             </Button>
           </div>
         </div>
@@ -228,13 +255,24 @@ function LandingPageContent() {
           <p className="text-base md:text-lg text-gray-700 mb-8">
             The fastest, most secure way to buy Chinese Yuan (RMB) with Ghana Cedis. Enjoy unbeatable rates, instant funding, and total peace of mind.
           </p>
-          <Button
-            onClick={handleBuyRMB}
-            className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-8 py-4 rounded-xl text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
-            style={{ minWidth: '140px' }}
-          >
-            <span className="text-base sm:text-lg font-bold tracking-wide">Get Started</span>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={handleBuyRMB}
+              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-8 py-4 rounded-xl text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+              style={{ minWidth: '140px' }}
+            >
+              <span className="text-base sm:text-lg font-bold tracking-wide">Get Started</span>
+            </Button>
+            <Button
+              onClick={handleAuthClick}
+              variant="outline"
+              className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-bold px-8 py-4 rounded-xl text-lg transition-all duration-200 flex items-center justify-center"
+            >
+              <span className="text-base sm:text-lg font-bold tracking-wide">
+                {session ? "Dashboard" : "Sign In"}
+              </span>
+            </Button>
+          </div>
         </motion.div>
         {/* Modern Illustration */}
         <motion.div
@@ -257,24 +295,78 @@ function LandingPageContent() {
               transition: { duration: 0.3 }
             }}
           />
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="text-center text-gray-600 mt-6 text-sm md:text-base max-w-md"
-          >
-            Secure • Fast • Reliable
-          </motion.p>
         </motion.div>
       </section>
 
-        {/* Features Grid */}
+      {/* New Text Section */}
+      <section className="max-w-6xl mx-auto px-6 py-4 md:py-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="mb-4 md:mb-6"
+        >
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight">
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Paying</span> Securely & Swiftly
+          </h2>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight mt-2">
+            with the <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Best Rates</span>
+          </h2>
+          <p className="text-sm md:text-base text-gray-600 mt-4 max-w-2xl mx-auto leading-relaxed">
+            Experience transparent pricing, bank-level security, and real-time rate locking—so you always get the most value for your money.
+          </p>
+        </motion.div>
+        
+        {/* Payment Method Logos */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="flex justify-center items-center space-x-6 md:space-x-8 lg:space-x-12 mb-6 md:mb-8"
+        >
+          {/* Alipay Logo */}
+          <motion.div 
+            whileHover={{ 
+              scale: 1.1,
+              rotate: 2,
+              transition: { duration: 0.3 }
+            }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <img 
+              src="/alipay_logo.svg" 
+              alt="Alipay" 
+              className="w-32 h-32 md:w-28 md:h-28 lg:w-36 lg:h-36 object-contain"
+            />
+          </motion.div>
+          
+          {/* WeChat Logo */}
+          <motion.div 
+            whileHover={{ 
+              scale: 1.1,
+              rotate: -2,
+              transition: { duration: 0.3 }
+            }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <img 
+              src="/wechat_logo.png" 
+              alt="WeChat" 
+              className="w-32 h-32 md:w-28 md:h-28 lg:w-36 lg:h-36 object-contain"
+            />
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* Features Grid */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8, delay: 0.2 }}
-        className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 py-12 px-4"
+        className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 py-8 md:py-12 px-4"
       >
         <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-shadow duration-300">
           <CardContent className="p-8 text-center flex flex-col items-center">
@@ -305,9 +397,9 @@ function LandingPageContent() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8, delay: 0.3 }}
-        className="max-w-2xl mx-auto mb-16"
+        className="max-w-2xl mx-auto mb-8 md:mb-12"
       >
-        <div className="bg-white/80 backdrop-blur-sm border border-blue-200 rounded-2xl shadow-xl text-center p-8">
+        <div className="bg-white/80 backdrop-blur-sm border border-blue-200 rounded-2xl shadow-xl text-center p-6 md:p-8">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">Refer & Earn</h2>
           <p className="text-gray-700 mb-3">
             Invite your friends to TRADE RMB and earn cash rewards for every successful referral.
@@ -323,29 +415,29 @@ function LandingPageContent() {
       </motion.div>
 
       {/* Testimonials & FAQ Section */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 px-4 mb-16">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 px-4 mb-8 md:mb-12">
         {/* Testimonials */}
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 flex flex-col justify-center"
+          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 md:p-8 flex flex-col justify-center"
         >
           <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4 text-center">What Our Customers Say</h3>
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             <div className="border-l-4 border-blue-400 pl-4 py-2">
               <p className="text-gray-800 italic">"Super fast and reliable! My RMB was funded in minutes. Highly recommend."</p>
               <div className="mt-2 flex items-center space-x-2">
                 <span className="font-semibold text-blue-600">— Nana A., Accra</span>
               </div>
-</div>
+            </div>
             <div className="border-l-4 border-purple-400 pl-4 py-2">
               <p className="text-gray-800 italic">"Great rates and excellent support. I felt safe throughout the process."</p>
               <div className="mt-2 flex items-center space-x-2">
                 <span className="font-semibold text-purple-600">— Linda M., Kumasi</span>
-        </div>
-      </div>
+              </div>
+            </div>
             <div className="border-l-4 border-blue-400 pl-4 py-2">
               <p className="text-gray-800 italic">"The referral bonus is a nice touch. I've already told my friends!"</p>
               <div className="mt-2 flex items-center space-x-2">
@@ -360,10 +452,10 @@ function LandingPageContent() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 flex flex-col justify-center"
+          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 md:p-8 flex flex-col justify-center"
         >
           <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4 text-center">Frequently Asked Questions</h3>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {/* FAQ Accordion */}
             <details className="group border-b pb-2">
               <summary className="font-semibold cursor-pointer text-gray-800 group-open:text-blue-700 transition">How long does it take to receive RMB?</summary>
@@ -386,7 +478,7 @@ function LandingPageContent() {
       </div>
 
       {/* Support Info */}
-      <div className="text-center mt-8 text-sm text-gray-500">
+      <div className="text-center mt-6 md:mt-8 text-sm text-gray-500">
         <p>Need help? Contact our support team</p>
         <Button
           onClick={() => {
@@ -401,10 +493,10 @@ function LandingPageContent() {
           </svg>
           Chat on WhatsApp
         </Button>
-        </div>
+      </div>
 
       {/* Footer */}
-      <footer className="text-center text-gray-500 py-8">
+      <footer className="text-center text-gray-500 py-6 md:py-8">
         <div className="flex items-center justify-center space-x-2 mb-2">
           <img 
             src="/logo.png" 
@@ -416,50 +508,6 @@ function LandingPageContent() {
         <p>Secure • Fast • Reliable</p>
         <p className="mt-1">© {new Date().getFullYear()} TRADE RMB. All rights reserved.</p>
       </footer>
-
-      {/* Referral Name Modal */}
-      <Dialog open={showReferralModal} onOpenChange={setShowReferralModal}>
-        <DialogContent className="max-w-xs sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">Enter Your Name</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="referral-name">Full Name</Label>
-              <Input
-                id="referral-name"
-                type="text"
-                placeholder="Enter your full name"
-                value={referralName}
-                onChange={(e) => setReferralName(e.target.value)}
-                className="mt-1"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleReferralSubmit();
-                  }
-                }}
-              />
-            </div>
-            <p className="text-sm text-gray-600 text-center">
-              This name will be used in your referral link
-            </p>
-          </div>
-          <DialogFooter className="flex justify-center space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowReferralModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleReferralSubmit}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              Create Referral Link
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

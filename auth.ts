@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { airtableService } from "@/lib/airtable-service"
 import bcrypt from "bcryptjs"
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const handler = NextAuth({
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -75,4 +75,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: '/auth/signin',
     signUp: '/auth/signup',
   },
-}) 
+})
+
+export const { auth, signIn, signOut } = handler
+export { handler as GET, handler as POST } 
