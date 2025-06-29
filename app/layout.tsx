@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Providers from "./providers"
@@ -12,8 +12,12 @@ export const metadata: Metadata = {
     "Fast, easy & secure currency exchange from Ghana Cedis to Chinese Yuan (RMB). Best exchange rates guaranteed.",
   keywords: "RMB, Chinese Yuan, Ghana Cedis, currency exchange, mobile money, MTN, Vodafone, AirtelTigo",
   authors: [{ name: "RMB TRADE" }],
-  viewport: "width=device-width, initial-scale=1",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({

@@ -1,9 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { airtableService } from "@/lib/airtable-service";
 import { v2 as cloudinary } from 'cloudinary';
-import { getServerSession } from "next-auth";
-import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import { auth } from "@/auth";
 import bcrypt from "bcryptjs";
 
 // Configure Cloudinary
@@ -13,83 +11,13 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Create authOptions inline to avoid import issues
-const authOptions = {
-  providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email or Username", type: "text" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
-
-        try {
-          const user = await airtableService.getUserByEmailOrUsername(credentials.email);
-          if (!user) {
-            return null;
-          }
-
-          const isValidPassword = await bcrypt.compare(credentials.password, user.fields.Password);
-          if (!isValidPassword) {
-            return null;
-          }
-
-          return {
-            id: user.id,
-            email: user.fields.Email,
-            name: user.fields.Full_Name,
-            username: user.fields.Username,
-            phone: user.fields.Phone,
-            image: user.fields.Avatar_URL,
-            userId: user.fields.User_ID,
-          };
-        } catch (error) {
-          console.error("Auth error:", error);
-          return null;
-        }
-      }
-    })
-  ],
-  session: {
-    strategy: "jwt",
-  },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.username = user.username;
-        token.phone = user.phone;
-        token.userId = user.userId;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-        session.user.username = token.username as string;
-        session.user.phone = token.phone as string;
-        session.user.userId = token.userId as string;
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: '/auth/signin',
-    signUp: '/auth/signup',
-  },
-};
-
 export async function POST(request: NextRequest) {
   try {
     console.log("🚀 Starting transaction submission...")
     const formData = await request.formData();
 
     // Get user session if available
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const userId = session?.user?.userId;
 
     // Extract form fields
