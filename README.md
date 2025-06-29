@@ -1,4 +1,4 @@
-# RMB TRADE - Ghana Currency Exchange
+# TRADE RMB - Ghana Currency Exchange
 
 A modern, responsive web application for currency exchange from GHS to RMB.
 
