@@ -76,6 +76,7 @@ const handler = NextAuth({
     signUp: '/auth/signup',
     error: '/auth/error',
   },
+  debug: process.env.NEXTAUTH_DEBUG === 'true',
 })
 
 export const { auth, signIn, signOut } = handler
