@@ -2,15 +2,11 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   return NextResponse.json({
-    cloudinary: {
-      cloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
-      apiKey: !!process.env.CLOUDINARY_API_KEY,
-      apiSecret: !!process.env.CLOUDINARY_API_SECRET,
-    },
-    airtable: {
-      baseId: !!process.env.AIRTABLE_BASE_ID,
-      token: !!process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN,
-    },
-    nodeEnv: process.env.NODE_ENV,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'SET' : 'NOT SET',
+    NEXTAUTH_DEBUG: process.env.NEXTAUTH_DEBUG,
+    NODE_ENV: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+    message: 'Environment variables check'
   })
 } 
