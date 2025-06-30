@@ -8,6 +8,8 @@ import html2canvas from "html2canvas";
 import { useToast } from "../../hooks/use-toast";
 import { Dialog } from "../../components/ui/dialog";
 
+export const dynamic = "force-dynamic";
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const [orders, setOrders] = useState([]);
@@ -30,7 +32,7 @@ export default function Dashboard() {
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/signup?referrer=${encodeURIComponent(session.user.name)}`;
+  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/signup?referrer=${encodeURIComponent(session && session.user ? session.user.name : "")}`;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -106,7 +108,7 @@ export default function Dashboard() {
         </div>
       </header>
       <div className="w-full max-w-3xl flex-1">
-        <GreetingBanner fullName={session.user.name} />
+        <GreetingBanner fullName={session && session.user ? session.user.name : ""} />
         {/* Analytics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="flex items-center gap-3 bg-white rounded-2xl shadow p-4">
