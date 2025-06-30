@@ -3,6 +3,14 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { airtableService } from "@/lib/airtable-service"
 import bcrypt from "bcryptjs"
 
+// Determine the base URL
+const getBaseUrl = () => {
+  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  if (process.env.NODE_ENV === 'production') return 'https://www.tradermb.com'
+  return 'http://localhost:3000'
+}
+
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
@@ -50,7 +58,6 @@ const handler = NextAuth({
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET || "your-secret-key-here",
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -69,17 +76,31 @@ const handler = NextAuth({
         session.user.userId = token.userId as string;
       }
       return session;
-    },
+    }
   },
+  secret: process.env.NEXTAUTH_SECRET || "your-secret-key-here",
   pages: {
     signIn: '/auth/signin',
     signUp: '/auth/signup',
     error: '/auth/error',
   },
   debug: process.env.NEXTAUTH_DEBUG === 'true',
+  // Explicitly set the URL to suppress the warning
+  url: getBaseUrl(),
   // Handle dynamic URLs for different environments
   useSecureCookies: process.env.NODE_ENV === 'production',
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
 })
 
-export const { auth, signIn, signOut } = handler
-export { handler as GET, handler as POST } 
+export { handler as GET, handler as POST }
+export const { auth, signIn, signOut } = handler 
