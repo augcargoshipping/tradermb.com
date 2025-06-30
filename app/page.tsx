@@ -10,65 +10,68 @@ import { useToast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useSession, signOut } from "next-auth/react"
 import GreetingBanner from "./components/GreetingBanner"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useSession } from "next-auth/react"
 
 function LandingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data: session, status } = useSession()
-  const [rate, setRate] = useState<number | null>(null)
-  const [loadingRate, setLoadingRate] = useState(true)
-  const [navShadow, setNavShadow] = useState(false)
   const { toast } = useToast();
   const [userName, setUserName] = useState("");
   const isMobile = useIsMobile();
+  const [navShadow, setNavShadow] = useState(false);
+  const { data: session } = useSession();
+  const [rate, setRate] = useState<number | null>(null);
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [rateLoading, setRateLoading] = useState(true);
 
   // Handle referral parameter from URL
   useEffect(() => {
-    const ref = searchParams.get('ref');
-    if (ref) {
-      const decodedRef = decodeURIComponent(ref);
-      setUserName(decodedRef);
+    if (searchParams) {
+      const ref = searchParams.get('ref');
+      if (ref) {
+        const decodedRef = decodeURIComponent(ref);
+        setUserName(decodedRef);
+      }
     }
   }, [searchParams]);
 
   useEffect(() => {
     let isMounted = true;
-    
+    let interval: NodeJS.Timeout;
     async function loadRate() {
       try {
-        console.log("🔍 Loading rate from API...")
-        const response = await fetch("/api/fetch-rate")
-        const data = await response.json()
-        console.log("📊 API response:", data)
-        
+        setRateLoading(true);
+        setRateError(null);
+        const response = await fetch("/api/fetch-rate");
+        const data = await response.json();
         if (isMounted) {
           if (data.success && data.rate !== null) {
-            console.log("✅ Setting rate to:", data.rate)
-            setRate(data.rate)
+            setRate(data.rate);
+            setRateError(null);
           } else {
-            console.error("❌ Failed to load rate:", data.error)
-            setRate(null)
+            setRate(null);
+            setRateError(data.error || "Failed to load rate");
           }
-          setLoadingRate(false)
         }
       } catch (error) {
-        console.error("❌ Failed to load rate:", error)
         if (isMounted) {
-          setRate(null)
-          setLoadingRate(false)
+          setRate(null);
+          setRateError("Failed to load rate");
         }
+      } finally {
+        if (isMounted) setRateLoading(false);
       }
     }
-    
-    loadRate()
-    
+    loadRate();
+    // Poll every 60 seconds for freshness
+    interval = setInterval(loadRate, 60000);
     return () => {
       isMounted = false;
+      clearInterval(interval);
     }
-  }, []) // Empty dependency array to run only once
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -83,46 +86,21 @@ function LandingPageContent() {
   }
 
   const handleReferralClick = () => {
-    if (session) {
-      // If user is signed in, create referral link with their name from database
-      const userName = session.user?.name || session.user?.email || "User";
-      const currentDomain = window.location.origin;
-      const url = `${currentDomain}?ref=${encodeURIComponent(userName)}`;
-      
-      if (navigator.share) {
-        try {
-          navigator.share({
-            title: "TRADE RMB Referral",
-            text: `Join TRADE RMB and get unbeatable rates! Use my referral link:`,
-            url,
-          });
-          toast({ title: "Referral link shared!" });
-        } catch {
-          // User cancelled share
-        }
-      } else {
-        navigator.clipboard.writeText(url);
-        toast({ 
-          title: "Referral link copied!", 
-          description: url 
-        });
-      }
+    if (session && session.user) {
+      const referralLink = `${window.location.origin}/auth/signup?referrer=${encodeURIComponent(session.user.name)}`;
+      navigator.clipboard.writeText(referralLink);
+      toast && toast({ title: "Referral link copied!", description: "Share it with your friends." });
     } else {
-      // If user is not signed in, redirect to sign in
       router.push("/auth/signin");
     }
   }
 
   const handleAuthClick = () => {
-    if (session) {
+    if (session && session.user) {
       router.push("/dashboard");
     } else {
       router.push("/auth/signin");
     }
-  }
-
-  const handleSignOut = () => {
-    signOut({ callbackUrl: "/" });
   }
 
   return (
@@ -142,35 +120,14 @@ function LandingPageContent() {
           
           {/* Desktop Navigation */}
           <div className="hidden sm:flex flex-1 justify-end items-center space-x-2">
-            {session ? (
-              <>
-                <Button
-                  onClick={() => router.push("/dashboard")}
-                  variant="outline"
-                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </Button>
-                <Button
-                  onClick={handleSignOut}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-red-600"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={handleAuthClick}
-                variant="outline"
-                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-              >
-                <User className="h-4 w-4" />
-                <span>Sign In</span>
-              </Button>
-            )}
+            <Button
+              onClick={handleAuthClick}
+              variant="outline"
+              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+            >
+              <User className="h-4 w-4" />
+              <span>{session && session.user ? "Dashboard" : "Sign In"}</span>
+            </Button>
             <Button
               onClick={handleBuyRMB}
               className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-base sm:text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -182,37 +139,15 @@ function LandingPageContent() {
 
           {/* Mobile Navigation - Direct Buttons */}
           <div className="flex sm:hidden items-center space-x-2">
-            {session ? (
-              <>
-                <Button
-                  onClick={() => router.push("/dashboard")}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 text-xs"
-                >
-                  <User className="h-3 w-3" />
-                  <span>Dashboard</span>
-                </Button>
-                <Button
-                  onClick={handleSignOut}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-red-600 p-2"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={handleAuthClick}
-                variant="outline"
-                size="sm"
-                className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 text-xs"
-              >
-                <User className="h-3 w-3" />
-                <span>Sign In</span>
-              </Button>
-            )}
+            <Button
+              onClick={handleAuthClick}
+              variant="outline"
+              size="sm"
+              className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 text-xs"
+            >
+              <User className="h-3 w-3" />
+              <span>{session && session.user ? "Dashboard" : "Sign In"}</span>
+            </Button>
             <Button
               onClick={handleBuyRMB}
               className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow-lg hover:scale-105 hover:shadow-xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -227,9 +162,19 @@ function LandingPageContent() {
       {/* Rate Display at Top */}
       <div className="w-full bg-gradient-to-r from-blue-100 to-purple-100 border-b border-blue-200 py-2">
         <div className="max-w-6xl mx-auto px-4 text-center">
-          <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm">
-            {loadingRate ? "Loading Rate..." : rate !== null ? `Current Rate: 1 GHS = ${rate} RMB` : "Rate Unavailable"}
-          </span>
+          {rateLoading ? (
+            <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm">
+              Loading Rate...
+            </span>
+          ) : rateError ? (
+            <span className="inline-block bg-red-500 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm">
+              {rateError}
+            </span>
+          ) : rate !== null ? (
+            <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm">
+              Today's Rate: 1 RMB = {rate.toFixed(2)} GHS
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -269,7 +214,7 @@ function LandingPageContent() {
               className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-bold px-8 py-4 rounded-xl text-lg transition-all duration-200 flex items-center justify-center"
             >
               <span className="text-base sm:text-lg font-bold tracking-wide">
-                {session ? "Dashboard" : "Sign In"}
+                {session && session.user ? "Dashboard" : "Sign In"}
               </span>
             </Button>
           </div>

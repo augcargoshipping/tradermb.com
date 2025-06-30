@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Upload, Calculator, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowLeft, Upload, Calculator, ChevronLeft, ChevronRight, Eye, EyeOff, User, Phone, Gift, DollarSign } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -246,258 +246,101 @@ function PurchaseForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
-      {/* Light Logo Background */}
-      <div className="absolute inset-0 opacity-5 pointer-events-none">
-        <div className="absolute top-10 left-10 w-32 h-32">
-          <img src="/logo.png" alt="" className="w-full h-full object-contain opacity-20" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 via-purple-400 to-purple-600 py-8 px-2">
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md flex flex-col items-center">
+        <div className="flex flex-col items-center mb-4">
+          <img src="/logo.png" alt="TRADE RMB Logo" className="w-12 h-12 object-contain mb-2" />
+          <span className="text-2xl font-extrabold text-blue-700 tracking-tight mb-2">TRADE RMB</span>
         </div>
-        <div className="absolute top-40 right-20 w-24 h-24">
-          <img src="/logo.png" alt="" className="w-full h-full object-contain opacity-15" />
-        </div>
-        <div className="absolute bottom-20 left-1/4 w-28 h-28">
-          <img src="/logo.png" alt="" className="w-full h-full object-contain opacity-10" />
-        </div>
+        <h2 className="text-2xl font-bold text-purple-700 mb-1 text-center">RMB Purchase Form</h2>
+        <p className="text-gray-500 mb-6 text-center">Fill in your details to buy Chinese Yuan with Ghana Cedis</p>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
+          <label className="text-gray-900 font-semibold mb-1">Customer Full Name *</label>
+          <input
+            type="text"
+            placeholder="Enter your full name"
+            value={formData.fullName}
+            onChange={e => handleInputChange("fullName", e.target.value)}
+            required
+            className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {errors.fullName && <div className="text-red-600 text-xs mt-1">{errors.fullName}</div>}
+
+          <label className="text-gray-900 font-semibold mb-1">Mobile Money Number *</label>
+          <input
+            type="tel"
+            placeholder="e.g., 0241234567"
+            value={formData.mobileNumber}
+            onChange={e => handleInputChange("mobileNumber", e.target.value)}
+            required
+            className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {errors.mobileNumber && <div className="text-red-600 text-xs mt-1">{errors.mobileNumber}</div>}
+
+          <label className="text-gray-900 font-semibold mb-1">Referral Name <span className="text-gray-400">(Optional)</span></label>
+          <input
+            type="text"
+            placeholder="Who referred you?"
+            value={formData.referralName}
+            onChange={e => handleInputChange("referralName", e.target.value)}
+            className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {errors.referralName && <div className="text-red-600 text-xs mt-1">{errors.referralName}</div>}
+
+          <label className="text-gray-900 font-semibold mb-1">Amount in GHS *</label>
+          <input
+            type="number"
+            placeholder="Amount in GHS"
+            value={formData.ghsAmount}
+            onChange={e => handleInputChange("ghsAmount", e.target.value)}
+            required
+            min="1"
+            className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {errors.ghsAmount && <div className="text-red-600 text-xs mt-1">{errors.ghsAmount}</div>}
+          {exchangeRate && formData.ghsAmount && (
+            <div className="rounded-xl border bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 p-4 mt-2">
+              <div className="flex items-center mb-2">
+                <Calculator className="w-5 h-5 text-blue-600 mr-2" />
+                <span className="text-gray-700 font-semibold">You will receive:</span>
+                <span className="ml-auto text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">¥{calculateRMB(formData.ghsAmount)}</span>
+              </div>
+              <div className="text-xs text-gray-500">Exchange Rate: 1 GHS = {exchangeRate.toFixed(2)} RMB</div>
+            </div>
+          )}
+
+          <label className="text-gray-900 font-semibold mb-1">Upload Alipay QR Code *</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={e => handleInputChange("alipayQR", e.target.files?.[0] || null)}
+            required
+            className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {qrPreview && (
+            <img src={qrPreview} alt="QR Preview" className="w-24 h-24 object-contain rounded border mx-auto mt-2" />
+          )}
+          {errors.alipayQR && <div className="text-red-600 text-xs mt-1">{errors.alipayQR}</div>}
+
+          <button
+            type="submit"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl px-4 py-3 font-bold text-lg shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 mt-2"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Processing..." : "Submit & Pay"}
+          </button>
+          {Object.values(errors).some(Boolean) && (
+            <div className="text-red-600 text-sm text-center">Please fix the errors above.</div>
+          )}
+        </form>
+        <a href="/" className="mt-6 text-gray-400 text-xs hover:underline">&larr; Back to Home</a>
       </div>
-      
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
-            <Button variant="ghost" size="sm" onClick={handleGoBack} className="mr-3">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center space-x-2">
-              <img 
-                src="/logo.png" 
-                alt="TRADE RMB Logo" 
-                className="w-8 h-8 object-contain"
-              />
-              <div>
-                <h1 className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight drop-shadow select-none">TRADE RMB</h1>
-                <p className="text-sm text-gray-600">Purchase Chinese Yuan</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="text-right">
-            <div className="bg-white rounded-lg shadow-md px-3 py-2 border border-gray-200">
-              <p className="text-xs text-gray-500 font-medium">Current Rate</p>
-              <p className="text-sm font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {loadingRate ? "Loading..." : exchangeRate ? `1 GHS = ${exchangeRate.toFixed(2)} RMB` : "Unavailable"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <Card className="shadow-xl bg-white/80 backdrop-blur-sm rounded-2xl border-0">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">RMB Purchase Form</CardTitle>
-            <CardDescription className="text-gray-600">
-              Fill in your details to buy Chinese Yuan with Ghana Cedis
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="px-6 pb-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="full-name">Customer Full Name *</Label>
-                <Input
-                  id="full-name"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={formData.fullName}
-                  onChange={(e) => handleInputChange("fullName", e.target.value)}
-                  className={`${errors.fullName ? "border-red-500" : "border-gray-300"} rounded-lg focus:border-blue-500 focus:ring-blue-500`}
-                  disabled={isSubmitting}
-                />
-                {errors.fullName && <p className="text-sm text-red-500">{errors.fullName}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="mobile-number">Mobile Money Number *</Label>
-                <Input
-                  id="mobile-number"
-                  type="tel"
-                  placeholder="e.g., 0241234567"
-                  value={formData.mobileNumber}
-                  onChange={(e) => handleInputChange("mobileNumber", e.target.value)}
-                  className={`${errors.mobileNumber ? "border-red-500" : "border-gray-300"} rounded-lg focus:border-blue-500 focus:ring-blue-500`}
-                  disabled={isSubmitting}
-                />
-                {errors.mobileNumber && <p className="text-sm text-red-500">{errors.mobileNumber}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="referral-name">Referral Name <span className="text-gray-400">(Optional)</span></Label>
-                <Input
-                  id="referral-name"
-                  type="text"
-                  placeholder="Who referred you?"
-                  value={formData.referralName}
-                  onChange={(e) => handleInputChange("referralName", e.target.value)}
-                  className="border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="ghs-amount">Amount in GHS *</Label>
-                <Input
-                  id="ghs-amount"
-                  type="number"
-                  placeholder="Enter amount in Ghana Cedis"
-                  value={formData.ghsAmount}
-                  onChange={(e) => handleInputChange("ghsAmount", e.target.value)}
-                  className={`${errors.ghsAmount ? "border-red-500" : "border-gray-300"} rounded-lg focus:border-blue-500 focus:ring-blue-500`}
-                  min="0"
-                  step="0.01"
-                  disabled={isSubmitting}
-                />
-                {errors.ghsAmount && <p className="text-sm text-red-500">{errors.ghsAmount}</p>}
-
-                {formData.ghsAmount && Number.parseFloat(formData.ghsAmount) > 0 && (
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 mt-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Calculator className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm text-gray-700">You will receive:</span>
-                      </div>
-                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        {loadingRate ? "Loading..." : exchangeRate ? `¥${calculateRMB(formData.ghsAmount)}` : "Rate unavailable"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Exchange Rate: 1 GHS = {loadingRate ? "Loading..." : exchangeRate ? `${exchangeRate.toFixed(2)}` : "Unavailable"} RMB
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="alipay-qr">Upload Alipay QR Code <span className="text-gray-400">(Optional)</span></Label>
-                <div className="relative">
-                  <Input
-                    id="alipay-qr"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleInputChange("alipayQR", e.target.files?.[0] || null)}
-                    className={`${errors.alipayQR ? "border-red-500" : "border-gray-300"} rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-blue-50 file:to-purple-50 file:text-blue-700 hover:file:bg-gradient-to-r hover:file:from-blue-100 hover:file:to-purple-100 focus:border-blue-500 focus:ring-blue-500`}
-                    disabled={isSubmitting}
-                  />
-                  <Upload className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-                </div>
-                {errors.alipayQR && <p className="text-sm text-red-500">{errors.alipayQR}</p>}
-
-                {formData.alipayQR && (
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-3 mt-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm text-green-700 font-medium">✓ QR Code Selected</p>
-                      <button
-                        type="button"
-                        onClick={() => handleInputChange("alipayQR", null)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                        disabled={isSubmitting}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      {qrPreview && (
-                        <img
-                          src={qrPreview}
-                          alt="QR Code Preview"
-                          className="w-16 h-16 object-cover rounded border"
-                        />
-                      )}
-                      <div>
-                        <p className="text-xs text-gray-600">{formData.alipayQR.name}</p>
-                        <p className="text-xs text-gray-500">{(formData.alipayQR.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-6 py-3 rounded-lg text-lg transition-all duration-200 disabled:opacity-50 hover:scale-105"
-              >
-                {isSubmitting ? "Submitting..." : "Submit & Pay"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Testimonials Section */}
-        <div className="mt-8 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border-0">
-          <h3 className="text-xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">What Our Customers Say</h3>
-          
-          <div className="relative">
-            {/* Testimonial Display */}
-            <div className="text-center mb-4">
-              <div className="flex justify-center mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className={`w-5 h-5 ${i < testimonials[currentTestimonial].rating ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <p className="text-gray-700 italic text-sm leading-relaxed mb-3">
-                "{testimonials[currentTestimonial].text}"
-              </p>
-              <div className="text-sm">
-                <span className="font-semibold text-gray-900">{testimonials[currentTestimonial].name}</span>
-                <span className="text-gray-500"> • {testimonials[currentTestimonial].location}</span>
-              </div>
-            </div>
-
-            {/* Navigation Dots */}
-            <div className="flex justify-center space-x-2 mb-4">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentTestimonial(index)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentTestimonial ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-
-            {/* Navigation Arrows */}
-            <button
-              onClick={() => setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length)}
-              className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-shadow"
-            >
-              <ChevronLeft className="w-4 h-4 text-gray-600" />
-            </button>
-            <button
-              onClick={() => setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)}
-              className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-shadow"
-            >
-              <ChevronRight className="w-4 h-4 text-gray-600" />
-            </button>
-          </div>
-
-          <div className="text-center mt-4">
-            <p className="text-xs text-gray-500">
-              Join {testimonials.length * 100}+ satisfied customers who trust TRADE RMB
-            </p>
-          </div>
-        </div>
-
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <img 
-              src="/logo.png" 
-              alt="TRADE RMB Logo" 
-              className="w-6 h-6 object-contain opacity-70"
-            />
-            <span className="font-semibold text-gray-600">TRADE RMB</span>
-          </div>
-          <p>Secure • Fast • Reliable</p>
-          <p className="mt-1">© 2025 TRADE RMB. All rights reserved.</p>
+      {/* Testimonials Section (always below the form) */}
+      <div className="w-full max-w-md mt-8">
+        <div className="bg-white/90 rounded-2xl shadow p-6">
+          <h3 className="text-lg font-bold text-purple-700 mb-2 text-center">What Customers Say</h3>
+          <div className="text-gray-700 italic text-center mb-2">"{testimonials[currentTestimonial].text}"</div>
+          <div className="text-sm text-gray-500 text-center">— {testimonials[currentTestimonial].name}, {testimonials[currentTestimonial].location}</div>
         </div>
       </div>
     </div>
@@ -505,14 +348,5 @@ function PurchaseForm() {
 }
 
 export default function PurchasePage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-pink-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p>Loading...</p>
-      </div>
-    </div>}>
-      <PurchaseForm />
-    </Suspense>
-  )
+  return <PurchaseForm />
 }

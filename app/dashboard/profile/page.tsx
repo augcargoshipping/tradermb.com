@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,9 +26,7 @@ import {
 import Link from "next/link";
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -48,22 +45,8 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (!session) {
-      router.push("/auth/signin");
-      return;
-    }
-
-    // Load user data
-    setFormData(prev => ({
-      ...prev,
-      name: session.user.name || "",
-      email: session.user.email || "",
-      phone: session.user.phone || "",
-      address: session.user.address || ""
-    }));
-  }, [session, status, router]);
+    // Placeholder for user info, fetch from /api/auth/me if needed
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
