@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { airtableService } from "@/lib/airtable-service"
 import bcrypt from "bcryptjs"
 
+// Force redeploy to pick up environment variables
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
