@@ -3,14 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { airtableService } from "@/lib/airtable-service"
 import bcrypt from "bcryptjs"
 
-// Debug logging to check environment variables
-console.log("🔍 Environment Variables Check:")
-console.log("NEXTAUTH_URL:", process.env.NEXTAUTH_URL)
-console.log("NEXTAUTH_SECRET:", process.env.NEXTAUTH_SECRET ? "SET" : "NOT SET")
-console.log("NEXTAUTH_DEBUG:", process.env.NEXTAUTH_DEBUG)
-console.log("NODE_ENV:", process.env.NODE_ENV)
-
-// Force redeploy to pick up environment variables
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
