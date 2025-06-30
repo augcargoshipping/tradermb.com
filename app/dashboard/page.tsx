@@ -128,8 +128,8 @@ export default function Dashboard() {
             <div>
               <div className="text-lg font-bold text-gray-900">{totalOrders}</div>
               <div className="text-xs text-gray-500">Total Orders</div>
-            </div>
-          </div>
+                </div>
+              </div>
           <div className="flex items-center gap-3 bg-white rounded-2xl shadow p-4">
             <CheckCircle className="w-8 h-8 text-green-500" />
             <div>
@@ -200,15 +200,15 @@ export default function Dashboard() {
                   )}
                 </tbody>
               </table>
-            </div>
+      </div>
           )}
-        </div>
+                </div>
         {/* Refer a Friend & WhatsApp Buttons (moved below main content) */}
         <div className="flex gap-4 mb-8 justify-center">
           <button onClick={handleRefer} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-500 text-white font-semibold shadow hover:scale-105 transition-transform">
             <Share2 className="w-5 h-5" /> Refer a Friend
           </button>
-        </div>
+                </div>
         {/* Refer a Friend Modal */}
         {showReferModal && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -221,8 +221,8 @@ export default function Dashboard() {
                 <button onClick={handleCopyLink} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-bold py-2 rounded-xl flex items-center justify-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 9h6v6H9z"/></svg> Copy Link</button>
               </div>
               <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowReferModal(false)}>&times;</button>
-            </div>
-          </div>
+                </div>
+                </div>
         )}
         {/* Invoice Modal */}
         {selectedOrder && (
@@ -262,9 +262,9 @@ export default function Dashboard() {
                   }
                 }}>Download as JPEG</button>
               </div>
-            </div>
-          </div>
-        )}
+                  </div>
+                  </div>
+                )}
         {/* Edit Account Modal */}
         {showEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -326,7 +326,7 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-      </div>
+                </div>
       {/* Footer */}
       <footer className="w-full max-w-3xl mt-12 py-6 text-center text-sm text-gray-200 border-t border-white/20">
         &copy; {new Date().getFullYear()} TRADE RMB. All rights reserved.

@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, User, Mail, Phone, Lock } from "lucide-react";
 import { useSession } from "next-auth/react";
 
-export default function SignUp() {
+function SignUpContent() {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -85,78 +85,78 @@ export default function SignUp() {
               className="pl-10 border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>
-          <div className="relative">
+              <div className="relative">
             <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <input
-              type="text"
+                  type="text"
               placeholder="Referral Name (if any)"
               value={referralName}
               onChange={e => setReferralName(e.target.value)}
               disabled={referralLocked}
               className={`pl-10 border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${referralLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-            />
-          </div>
-          <div className="relative">
+                />
+              </div>
+              <div className="relative">
             <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <input
-              type="text"
-              placeholder="Choose a username"
+                  type="text"
+                  placeholder="Choose a username"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              required
+                  required
               className="pl-10 border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-          <div className="relative">
+                />
+              </div>
+              <div className="relative">
             <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <input
-              type="email"
-              placeholder="Enter your email"
+                  type="email"
+                  placeholder="Enter your email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              required
+                  required
               className="pl-10 border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-          <div className="relative">
+                />
+              </div>
+              <div className="relative">
             <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <input
-              type="tel"
-              placeholder="Enter your phone number"
+                  type="tel"
+                  placeholder="Enter your phone number"
               value={phone}
               onChange={e => setPhone(e.target.value)}
-              required
+                  required
               className="pl-10 border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-          <div className="relative">
+                />
+              </div>
+              <div className="relative">
             <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Create a password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              required
+                  required
               className="pl-10 pr-10 border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             <button type="button" className="absolute right-3 top-3" tabIndex={-1} onClick={() => setShowPassword(v => !v)}>
               {showPassword ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
-            </button>
-          </div>
-          <div className="relative">
+                </button>
+              </div>
+              <div className="relative">
             <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <input
-              type={showConfirmPassword ? "text" : "password"}
-              placeholder="Confirm your password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
-              required
+                  required
               className="pl-10 pr-10 border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             <button type="button" className="absolute right-3 top-3" tabIndex={-1} onClick={() => setShowConfirmPassword(v => !v)}>
               {showConfirmPassword ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
-            </button>
-          </div>
+                </button>
+              </div>
           <button
             type="submit"
             className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl px-4 py-3 font-bold text-lg shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
@@ -164,7 +164,7 @@ export default function SignUp() {
           >
             {loading ? "Creating Account..." : "Create Account"}
           </button>
-          {error && (
+            {error && (
             <div className="text-red-600 text-sm text-center">{error}</div>
           )}
         </form>
@@ -172,7 +172,15 @@ export default function SignUp() {
           Already have an account? <a href="/auth/signin" className="text-blue-600 underline">Sign in here</a>
         </p>
         <a href="/" className="mt-2 text-gray-400 text-xs hover:underline">&larr; Back to Home</a>
-      </div>
+            </div>
     </div>
+  );
+}
+
+export default function SignUp() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignUpContent />
+    </Suspense>
   );
 } 

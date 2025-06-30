@@ -257,9 +257,9 @@ function PurchaseForm() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
           <label className="text-gray-900 font-semibold mb-1">Customer Full Name *</label>
           <input
-            type="text"
-            placeholder="Enter your full name"
-            value={formData.fullName}
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={formData.fullName}
             onChange={e => handleInputChange("fullName", e.target.value)}
             required
             className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -268,9 +268,9 @@ function PurchaseForm() {
 
           <label className="text-gray-900 font-semibold mb-1">Mobile Money Number *</label>
           <input
-            type="tel"
-            placeholder="e.g., 0241234567"
-            value={formData.mobileNumber}
+                  type="tel"
+                  placeholder="e.g., 0241234567"
+                  value={formData.mobileNumber}
             onChange={e => handleInputChange("mobileNumber", e.target.value)}
             required
             className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -279,9 +279,9 @@ function PurchaseForm() {
 
           <label className="text-gray-900 font-semibold mb-1">Referral Name <span className="text-gray-400">(Optional)</span></label>
           <input
-            type="text"
-            placeholder="Who referred you?"
-            value={formData.referralName}
+                  type="text"
+                  placeholder="Who referred you?"
+                  value={formData.referralName}
             onChange={e => handleInputChange("referralName", e.target.value)}
             className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
@@ -289,9 +289,9 @@ function PurchaseForm() {
 
           <label className="text-gray-900 font-semibold mb-1">Amount in GHS *</label>
           <input
-            type="number"
+                  type="number"
             placeholder="Amount in GHS"
-            value={formData.ghsAmount}
+                  value={formData.ghsAmount}
             onChange={e => handleInputChange("ghsAmount", e.target.value)}
             required
             min="1"
@@ -311,8 +311,8 @@ function PurchaseForm() {
 
           <label className="text-gray-900 font-semibold mb-1">Upload Alipay QR Code *</label>
           <input
-            type="file"
-            accept="image/*"
+                    type="file"
+                    accept="image/*"
             onChange={e => handleInputChange("alipayQR", e.target.files?.[0] || null)}
             required
             className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -322,19 +322,19 @@ function PurchaseForm() {
           )}
           {errors.alipayQR && <div className="text-red-600 text-xs mt-1">{errors.alipayQR}</div>}
 
-          <button
+                      <button
             type="submit"
             className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl px-4 py-3 font-bold text-lg shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 mt-2"
-            disabled={isSubmitting}
-          >
+                        disabled={isSubmitting}
+                      >
             {isSubmitting ? "Processing..." : "Submit & Pay"}
-          </button>
+                      </button>
           {Object.values(errors).some(Boolean) && (
             <div className="text-red-600 text-sm text-center">Please fix the errors above.</div>
           )}
-        </form>
+            </form>
         <a href="/" className="mt-6 text-gray-400 text-xs hover:underline">&larr; Back to Home</a>
-      </div>
+              </div>
       {/* Testimonials Section (always below the form) */}
       <div className="w-full max-w-md mt-8">
         <div className="bg-white/90 rounded-2xl shadow p-6">
@@ -348,5 +348,9 @@ function PurchaseForm() {
 }
 
 export default function PurchasePage() {
-  return <PurchaseForm />
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PurchaseForm />
+    </Suspense>
+  );
 }
