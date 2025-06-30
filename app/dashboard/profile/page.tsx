@@ -24,9 +24,13 @@ import {
   AlertCircle
 } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+
+export const dynamic = "force-dynamic";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [message, setMessage] = useState({ type: "", text: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -159,7 +163,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!session) {
+  if (!session || !session.user) {
     return null;
   }
 
@@ -220,31 +224,31 @@ export default function ProfilePage() {
               <CardHeader className="text-center">
                 <div className="relative mx-auto">
                   <Avatar className="h-24 w-24 mx-auto">
-                    <AvatarImage src={session.user.image || ""} />
+                    <AvatarImage src={session && session.user ? session.user.image || "" : ""} />
                     <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-2xl">
-                      {session.user.name?.charAt(0) || "U"}
+                      {session && session.user ? session.user.name?.charAt(0) : "U"}
                     </AvatarFallback>
                   </Avatar>
                   <Badge className="absolute -bottom-2 -right-2 bg-green-500">
                     Active
                   </Badge>
                 </div>
-                <CardTitle className="mt-4">{session.user.name}</CardTitle>
-                <CardDescription>@{session.user.username}</CardDescription>
+                <CardTitle className="mt-4">{session && session.user ? session.user.name : ""}</CardTitle>
+                <CardDescription>@{session && session.user ? session.user.username : ""}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-600">{session.user.email}</span>
+                    <span className="text-gray-600">{session && session.user ? session.user.email : ""}</span>
                   </div>
-                  {session.user.phone && (
+                  {session && session.user && session.user.phone && (
                     <div className="flex items-center space-x-2">
                       <Phone className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">{session.user.phone}</span>
                     </div>
                   )}
-                  {session.user.address && (
+                  {session && session.user && session.user.address && (
                     <div className="flex items-center space-x-2">
                       <MapPin className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">{session.user.address}</span>
