@@ -90,7 +90,9 @@ function SignInContent() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
           {error && (
-            <div className="text-red-600 text-sm text-center">{decodeURIComponent(error)}</div>
+            <div className="text-red-600 text-sm text-center bg-red-50 border border-red-200 rounded-lg p-3">
+              {error === "CredentialsSignin" ? "Email or password incorrect" : decodeURIComponent(error)}
+            </div>
           )}
         </form>
         <p className="mt-6 text-sm text-gray-600">

@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -71,6 +72,7 @@ const testimonials = [
 function PurchaseForm() {
   const router = useRouter()
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     mobileNumber: "",
@@ -94,6 +96,13 @@ function PurchaseForm() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Prefill user's name if signed in
+  useEffect(() => {
+    if (session?.user?.name && !formData.fullName) {
+      setFormData((prev) => ({ ...prev, fullName: session.user.name }));
+    }
+  }, [session, formData.fullName]);
 
   // Auto-rotate testimonials
   useEffect(() => {
