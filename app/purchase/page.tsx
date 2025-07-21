@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,10 @@ interface FormData {
   mobileNumber: string
   referralName: string
   ghsAmount: string
+  rmbAmount: string
+  currencyMode: "ghs-to-rmb" | "rmb-to-ghs"
   alipayQR: File | null
+  email: string
 }
 
 interface FormErrors {
@@ -28,7 +31,10 @@ interface FormErrors {
   mobileNumber?: string
   referralName?: string
   ghsAmount?: string
+  rmbAmount?: string
+  currencyMode?: string
   alipayQR?: string
+  email?: string
 }
 
 const testimonials = [
@@ -78,7 +84,10 @@ function PurchaseForm() {
     mobileNumber: "",
     referralName: "",
     ghsAmount: "",
+    rmbAmount: "",
+    currencyMode: "ghs-to-rmb",
     alipayQR: null,
+    email: ""
   })
 
   const [errors, setErrors] = useState<FormErrors>({})
@@ -87,22 +96,42 @@ function PurchaseForm() {
   const [exchangeRate, setExchangeRate] = useState<number | null>(null)
   const [loadingRate, setLoadingRate] = useState(true)
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
+  const hasPrefilledReferral = useRef(false)
+  const hasPrefilledUser = useRef(false)
 
   // Prefill referralName from ?ref= param if present
   useEffect(() => {
     const ref = searchParams.get('ref');
-    if (ref && !formData.referralName) {
-      setFormData((prev) => ({ ...prev, referralName: ref }));
+    if (ref && !hasPrefilledReferral.current) {
+      setFormData((prev) => {
+        if (!prev.referralName) {
+          hasPrefilledReferral.current = true;
+          return { ...prev, referralName: ref };
+        }
+        return prev;
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Prefill user's name if signed in
+  // Prefill user's name and email if signed in
   useEffect(() => {
-    if (session?.user?.name && !formData.fullName) {
-      setFormData((prev) => ({ ...prev, fullName: session.user.name }));
+    if (session?.user && !hasPrefilledUser.current) {
+      const updates: Partial<FormData> = {};
+      
+      if (session.user.name && !formData.fullName) {
+        updates.fullName = session.user.name;
+      }
+      
+      if (session.user.email && !formData.email) {
+        updates.email = session.user.email;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        setFormData((prev) => ({ ...prev, ...updates }));
+        hasPrefilledUser.current = true;
+      }
     }
-  }, [session, formData.fullName]);
+  }, [session?.user]);
 
   // Auto-rotate testimonials
   useEffect(() => {
@@ -143,6 +172,12 @@ function PurchaseForm() {
     return (amount * exchangeRate).toFixed(2)
   }
 
+  const calculateGHS = (rmbAmount: string): string => {
+    const amount = Number.parseFloat(rmbAmount)
+    if (isNaN(amount) || amount <= 0 || !exchangeRate) return "0.00"
+    return (amount / exchangeRate).toFixed(2)
+  }
+
   const handleInputChange = (field: keyof FormData, value: string | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
 
@@ -174,8 +209,18 @@ function PurchaseForm() {
       newErrors.mobileNumber = "Please enter a valid Ghana mobile number"
     }
 
-    if (!formData.ghsAmount || Number.parseFloat(formData.ghsAmount) <= 0) {
+    if (formData.currencyMode === "ghs-to-rmb" && (!formData.ghsAmount || Number.parseFloat(formData.ghsAmount) <= 0)) {
       newErrors.ghsAmount = "Please enter a valid GHS amount"
+    }
+
+    if (formData.currencyMode === "rmb-to-ghs" && (!formData.rmbAmount || Number.parseFloat(formData.rmbAmount) <= 0)) {
+      newErrors.rmbAmount = "Please enter a valid RMB amount"
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Please enter your email address"
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address"
     }
 
     // QR code is now optional
@@ -209,9 +254,15 @@ function PurchaseForm() {
       submitData.append("fullName", formData.fullName)
       submitData.append("mobileNumber", formData.mobileNumber)
       submitData.append("referralName", formData.referralName)
-      submitData.append("ghsAmount", formData.ghsAmount)
-      submitData.append("rmbAmount", calculateRMB(formData.ghsAmount))
+      if (formData.currencyMode === "ghs-to-rmb") {
+        submitData.append("ghsAmount", formData.ghsAmount)
+        submitData.append("rmbAmount", calculateRMB(formData.ghsAmount))
+      } else {
+        submitData.append("rmbAmount", formData.rmbAmount)
+        submitData.append("ghsAmount", calculateGHS(formData.rmbAmount))
+      }
       submitData.append("exchangeRate", exchangeRate?.toString() || "0")
+      submitData.append("email", formData.email)
       if (formData.alipayQR) {
         submitData.append("alipayQR", formData.alipayQR)
       }
@@ -230,7 +281,8 @@ function PurchaseForm() {
         console.log("✅ Form submitted successfully!")
         const confirmationData = {
           ...formData,
-          rmbAmount: calculateRMB(formData.ghsAmount),
+          rmbAmount: formData.currencyMode === "ghs-to-rmb" ? calculateRMB(formData.ghsAmount) : formData.rmbAmount,
+          ghsAmount: formData.currencyMode === "rmb-to-ghs" ? calculateGHS(formData.rmbAmount) : formData.ghsAmount,
           referenceCode: result.referenceCode,
           recordId: result.recordId,
           submittedAt: new Date().toISOString(),
@@ -275,6 +327,17 @@ function PurchaseForm() {
           />
           {errors.fullName && <div className="text-red-600 text-xs mt-1">{errors.fullName}</div>}
 
+          <label className="text-gray-900 font-semibold mb-1">Email Address *</label>
+          <input
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={formData.email}
+            onChange={e => handleInputChange("email", e.target.value)}
+            required
+            className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {errors.email && <div className="text-red-600 text-xs mt-1">{errors.email}</div>}
+
           <label className="text-gray-900 font-semibold mb-1">Mobile Money Number *</label>
           <input
                   type="tel"
@@ -296,26 +359,83 @@ function PurchaseForm() {
           />
           {errors.referralName && <div className="text-red-600 text-xs mt-1">{errors.referralName}</div>}
 
-          <label className="text-gray-900 font-semibold mb-1">Amount in GHS *</label>
-          <input
-                  type="number"
-            placeholder="Amount in GHS"
-                  value={formData.ghsAmount}
-            onChange={e => handleInputChange("ghsAmount", e.target.value)}
-            required
-            min="1"
-            className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          {errors.ghsAmount && <div className="text-red-600 text-xs mt-1">{errors.ghsAmount}</div>}
-          {exchangeRate && formData.ghsAmount && (
-            <div className="rounded-xl border bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 p-4 mt-2">
-              <div className="flex items-center mb-2">
-                <Calculator className="w-5 h-5 text-blue-600 mr-2" />
-                <span className="text-gray-700 font-semibold">You will receive:</span>
-                <span className="ml-auto text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">¥{calculateRMB(formData.ghsAmount)}</span>
-              </div>
-              <div className="text-xs text-gray-500">Exchange Rate: 1 GHS = {exchangeRate.toFixed(2)} RMB</div>
+          <div className="flex items-center gap-3 mb-2">
+            <label className="text-gray-900 font-semibold whitespace-nowrap">Currency Mode *</label>
+            <div className="flex gap-2 flex-1">
+              <button
+                type="button"
+                onClick={() => handleInputChange("currencyMode", "ghs-to-rmb")}
+                className={`flex-1 px-3 py-2 rounded-lg font-semibold text-sm transition-all ${
+                  formData.currencyMode === "ghs-to-rmb"
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                ₵ → ¥
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInputChange("currencyMode", "rmb-to-ghs")}
+                className={`flex-1 px-3 py-2 rounded-lg font-semibold text-sm transition-all ${
+                  formData.currencyMode === "rmb-to-ghs"
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                ¥ → ₵
+              </button>
             </div>
+          </div>
+          {errors.currencyMode && <div className="text-red-600 text-xs mt-1">{errors.currencyMode}</div>}
+
+          {formData.currencyMode === "ghs-to-rmb" ? (
+            <>
+              <label className="text-gray-900 font-semibold mb-1">Amount in GHS *</label>
+              <input
+                      type="number"
+                placeholder="Amount in GHS"
+                      value={formData.ghsAmount}
+                onChange={e => handleInputChange("ghsAmount", e.target.value)}
+                required
+                min="1"
+                className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              {errors.ghsAmount && <div className="text-red-600 text-xs mt-1">{errors.ghsAmount}</div>}
+              {exchangeRate && formData.ghsAmount && (
+                <div className="rounded-xl border bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 p-4 mt-2">
+                  <div className="flex items-center mb-2">
+                    <Calculator className="w-5 h-5 text-blue-600 mr-2" />
+                    <span className="text-gray-700 font-semibold">You will receive:</span>
+                    <span className="ml-auto text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">¥{calculateRMB(formData.ghsAmount)}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">Exchange Rate: 1 GHS = {exchangeRate.toFixed(2)} RMB</div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <label className="text-gray-900 font-semibold mb-1">Amount in RMB *</label>
+              <input
+                      type="number"
+                placeholder="Amount in RMB"
+                      value={formData.rmbAmount}
+                onChange={e => handleInputChange("rmbAmount", e.target.value)}
+                required
+                min="1"
+                className="border rounded w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              {errors.rmbAmount && <div className="text-red-600 text-xs mt-1">{errors.rmbAmount}</div>}
+              {exchangeRate && formData.rmbAmount && (
+                <div className="rounded-xl border bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 p-4 mt-2">
+                  <div className="flex items-center mb-2">
+                    <Calculator className="w-5 h-5 text-blue-600 mr-2" />
+                    <span className="text-gray-700 font-semibold">You will pay:</span>
+                    <span className="ml-auto text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">GHS {calculateGHS(formData.rmbAmount)}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">Exchange Rate: 1 RMB = {(1/exchangeRate).toFixed(4)} GHS</div>
+                </div>
+              )}
+            </>
           )}
 
           <label className="text-gray-900 font-semibold mb-1">Upload Alipay QR Code *</label>

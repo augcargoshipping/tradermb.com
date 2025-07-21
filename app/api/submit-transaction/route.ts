@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
 
     // Extract form fields
     const fullName = formData.get("fullName") as string;
+    const email = formData.get("email") as string;
     const mobileNumber = formData.get("mobileNumber") as string;
     const referralName = formData.get("referralName") as string;
     const ghsAmount = formData.get("ghsAmount") as string;
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
 
     console.log("📝 Form data received:", {
       fullName: !!fullName,
+      email: !!email,
       mobileNumber: !!mobileNumber,
       ghsAmount: !!ghsAmount,
       rmbAmount: !!rmbAmount,
@@ -41,9 +43,23 @@ export async function POST(request: NextRequest) {
       userId: userId || "Not logged in"
     });
 
-    if (!fullName || !mobileNumber || !ghsAmount) {
-      console.log("❌ Missing required fields:", { fullName: !!fullName, mobileNumber: !!mobileNumber, ghsAmount: !!ghsAmount });
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    // Validate required fields
+    if (!fullName || !email || !mobileNumber || !ghsAmount || !rmbAmount) {
+      console.error("❌ Missing required fields:", { fullName: !!fullName, email: !!email, mobileNumber: !!mobileNumber, ghsAmount: !!ghsAmount, rmbAmount: !!rmbAmount })
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
+    // Validate email format
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
+    if (!emailRegex.test(email)) {
+      console.error("❌ Invalid email format:", email)
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
+      )
     }
 
     // Validate exchange rate
@@ -105,6 +121,7 @@ export async function POST(request: NextRequest) {
     // Create Airtable record with file URL
     const recordData = {
       Customer_Name: fullName,
+      Email_Address: email,
       Mobile_Number: mobileNumber,
       Referral_Name: referralName || undefined,
       GHS_Amount: parseFloat(ghsAmount),

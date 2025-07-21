@@ -6,13 +6,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-  const { fullName, email, password } = req.body;
-  if (!fullName || !email || !password) {
+  const { fullName, username, email, phone, password, referralName } = req.body;
+  if (!fullName || !username || !email || !password) {
     return res.status(400).json({ error: "Missing required fields" });
   }
-  // Check if user already exists
-  const existing = await airtableService.getUsersByEmail(email);
-  if (existing && existing.length > 0) {
+  // Check if user already exists (by email or username)
+  const existingByEmail = await airtableService.getUsersByEmail(email);
+  const existingByUsername = await airtableService.getUsersByUsername(username);
+  if ((existingByEmail && existingByEmail.length > 0) || (existingByUsername && existingByUsername.length > 0)) {
     return res.status(409).json({ error: "User already exists" });
   }
   // Hash password
@@ -21,9 +22,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await airtableService.createUserRecord({
       Full_Name: fullName,
-      Username: email,
+      Username: username,
       Email: email,
-      Phone: "",
+      Phone: phone || "",
+      Referral_Name: referralName || "",
       Password: hashedPassword,
     });
     return res.status(201).json({ success: true });

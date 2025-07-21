@@ -25,7 +25,7 @@ function SignInContent() {
     e.preventDefault();
     setLoading(true);
     const res = await signIn("credentials", {
-      email: identifier,
+      identifier,
       password,
       redirect: false,
     });
