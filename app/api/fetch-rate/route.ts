@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { airtableService } from "@/lib/airtable-service"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     console.log("🔍 Fetching current exchange rate...")
 
@@ -18,28 +18,82 @@ export async function GET() {
       }, { status: 500 })
     }
 
-    // Fetch the current rate
-    const rate = await airtableService.fetchCurrentRate()
+    // Get query parameters for dynamic rate calculation
+    const { searchParams } = new URL(request.url)
+    const rmbAmount = searchParams.get('rmbAmount')
 
-    if (rate !== null) {
-      return NextResponse.json({
-        success: true,
-        rate: rate,
-        message: "Rate fetched successfully",
-      })
+    if (rmbAmount) {
+      // Dynamic rate calculation based on RMB amount
+      const amount = parseFloat(rmbAmount)
+      if (isNaN(amount) || amount <= 0) {
+        return NextResponse.json({
+          success: false,
+          error: "Invalid RMB amount",
+          message: "Please provide a valid positive RMB amount"
+        }, { status: 400 })
+      }
+
+      console.log(`🔍 Getting rate for RMB amount: ${amount}`)
+      const rateResult = await airtableService.getRateForAmount(amount)
+      
+      if (rateResult.rate !== null) {
+        console.log(`✅ Rate found: ${rateResult.rate} (${rateResult.type})`)
+        return NextResponse.json({
+          success: true,
+          rate: rateResult.rate,
+          type: rateResult.type,
+          rmbAmount: amount,
+          message: `Rate fetched successfully for ¥${amount}`,
+        })
+      } else {
+        console.log("❌ No rate found for amount")
+        return NextResponse.json({
+          success: false,
+          error: "No rate found for amount",
+          message: "No exchange rate found for the specified amount",
+        }, { status: 404 })
+      }
     } else {
-      console.log("❌ No rate found in Airtable")
-      return NextResponse.json({
-        success: false,
-        error: "No rate found in Airtable",
-        message: "No exchange rate found in the database",
-        troubleshooting: [
-          "1. Check if there's a 'Rate' field in your CUSTOMERS table",
-          "2. Ensure at least one record has a Rate value",
-          "3. Verify the Rate field is a number type in Airtable",
-          "4. Use the /api/set-rate endpoint to set a rate",
-        ],
-      }, { status: 404 })
+      // Fetch all rates for display
+      console.log("🔍 Fetching all rates from RATES table...")
+      const rates = await airtableService.fetchAllRates()
+      
+      console.log(`📊 Rates found:`, rates)
+      
+      if (rates.standard !== null || rates.lowRmb !== null) {
+        console.log("✅ Using rates from RATES table")
+        return NextResponse.json({
+          success: true,
+          rates: rates,
+          message: "All rates fetched successfully",
+        })
+      } else {
+        console.log("⚠️ No rates found in RATES table, falling back to CUSTOMERS table")
+        // Fallback to old method
+        const rate = await airtableService.fetchCurrentRate()
+        
+        if (rate !== null) {
+          console.log(`✅ Using fallback rate: ${rate}`)
+          return NextResponse.json({
+            success: true,
+            rate: rate,
+            message: "Rate fetched successfully (fallback)",
+          })
+        } else {
+          console.log("❌ No rate found in any table")
+          return NextResponse.json({
+            success: false,
+            error: "No rate found in Airtable",
+            message: "No exchange rate found in the database",
+            troubleshooting: [
+              "1. Check if there's a RATES table in your Airtable base",
+              "2. Ensure the RATES table has 'A type' and '# value' fields",
+              "3. Add records with 'standard' and 'low rmb' types",
+              "4. Verify the '# value' field contains numbers",
+            ],
+          }, { status: 404 })
+        }
+      }
     }
   } catch (error) {
     console.error("❌ Rate fetch error:", error)

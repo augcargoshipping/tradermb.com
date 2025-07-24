@@ -9,10 +9,18 @@ export interface CustomerRecord {
   Reference_Code: string
   Status: "Pending" | "Paid" | "Completed" | "Cancelled"
   Submitted_At: string
-  Rate?: number
-  Rate_Type?: string
   QR_Code?: { url: string }[]
   user_id?: string
+}
+
+export interface RateRecord {
+  type: "standard" | "low rmb"
+  value: number
+  "Created By"?: {
+    id: string
+    email: string
+    name: string
+  }
 }
 
 export interface UserRecord {
@@ -47,16 +55,20 @@ export class AirtableService {
   private token: string
   private tableName: string
   private usersTableName: string
+  private ratesTableName: string
   private baseUrl: string
   private usersBaseUrl: string
+  private ratesBaseUrl: string
 
   constructor() {
     this.baseId = process.env.AIRTABLE_BASE_ID || ""
     this.token = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN || ""
     this.tableName = "CUSTOMERS"
     this.usersTableName = "USERS"
+    this.ratesTableName = "RATES"
     this.baseUrl = `https://api.airtable.com/v0/${this.baseId}/${this.tableName}`
     this.usersBaseUrl = `https://api.airtable.com/v0/${this.baseId}/${this.usersTableName}`
+    this.ratesBaseUrl = `https://api.airtable.com/v0/${this.baseId}/${this.ratesTableName}`
 
     if (!this.baseId || !this.token) {
       console.warn("⚠️ Airtable credentials not configured")
@@ -326,113 +338,97 @@ export class AirtableService {
   }
 
   async testConnection(): Promise<boolean> {
-    const response = await fetch(`${this.baseUrl}?maxRecords=1`, {
-      headers: this.getHeaders(),
-    })
-    return response.ok
-  }
-
-  async fetchCurrentRate(): Promise<number | null> {
     try {
-      console.log("🔍 Fetching rate from Airtable...")
-      
-      // First, try to get rate from a dedicated rate record
-      const rateResponse = await fetch(`${this.baseUrl}?filterByFormula={Rate_Type}='EXCHANGE_RATE'&maxRecords=1`, {
+      const response = await fetch(`${this.baseUrl}?maxRecords=1`, {
         headers: this.getHeaders(),
       })
-
-      if (rateResponse.ok) {
-        const rateData = await this.handleAirtableResponse(rateResponse)
-        if (rateData.records && rateData.records.length > 0) {
-          const rateRecord = rateData.records[0] as AirtableResponse
-          if (rateRecord.fields.Rate && typeof rateRecord.fields.Rate === "number" && rateRecord.fields.Rate > 0) {
-            console.log(`✅ Found dedicated rate: ${rateRecord.fields.Rate}`)
-            return rateRecord.fields.Rate
-          }
-        }
-      }
-
-      // Fallback: look for rate in recent customer records
-      const response = await fetch(`${this.baseUrl}?maxRecords=10&sort[0][field]=Submitted_At&sort[0][direction]=desc`, {
-      headers: this.getHeaders(),
-    })
-
-    const data = await this.handleAirtableResponse(response)
-
-    if (data.records && data.records.length > 0) {
-        // Look for a record with a Rate field
-        for (const record of data.records) {
-          const fields = record.fields as CustomerRecord
-          if (fields.Rate !== undefined && typeof fields.Rate === "number" && fields.Rate > 0) {
-            console.log(`✅ Found rate: ${fields.Rate} from record ${record.id}`)
-            return fields.Rate
-          }
-        }
-        
-        console.log("⚠️ No records with valid Rate field found")
-        console.log("Available fields in first record:", Object.keys(data.records[0].fields))
-      } else {
-        console.log("⚠️ No records found in CUSTOMERS table")
-      }
-
-      return null
+      return response.ok
     } catch (error) {
-      console.error("❌ Error fetching rate:", error)
-    return null
+      console.error("❌ Connection test failed:", error)
+      return false
     }
   }
 
-  async setExchangeRate(rate: number): Promise<boolean> {
+  async fetchAllRates(): Promise<{ standard: number | null; lowRmb: number | null }> {
     try {
-      console.log(`🔧 Setting exchange rate to: ${rate}`)
+      console.log("🔍 Fetching all rates from RATES table...")
+      console.log(`📋 RATES table URL: ${this.ratesBaseUrl}`)
       
-      // First, try to update existing rate record
-      const rateResponse = await fetch(`${this.baseUrl}?filterByFormula={Rate_Type}='EXCHANGE_RATE'&maxRecords=1`, {
+      const response = await fetch(this.ratesBaseUrl, {
         headers: this.getHeaders(),
       })
 
-      if (rateResponse.ok) {
-        const rateData = await this.handleAirtableResponse(rateResponse)
-        if (rateData.records && rateData.records.length > 0) {
-          const recordId = rateData.records[0].id
-          const updateResponse = await fetch(`${this.baseUrl}/${recordId}`, {
-            method: "PATCH",
-            headers: this.getHeaders(),
-            body: JSON.stringify({
-              fields: { Rate: rate }
-            }),
-          })
-          await this.handleAirtableResponse(updateResponse)
-          console.log("✅ Updated existing rate record")
-          return true
+      console.log(`📊 RATES table response status: ${response.status}`)
+      
+      if (!response.ok) {
+        console.error(`❌ RATES table request failed: ${response.status} ${response.statusText}`)
+        const errorText = await response.text()
+        console.error(`❌ Error details: ${errorText}`)
+        return { standard: null, lowRmb: null }
+      }
+
+      const data = await this.handleAirtableResponse(response)
+      console.log(`📊 RATES table data:`, data)
+      
+      let standardRate: number | null = null
+      let lowRmbRate: number | null = null
+
+      if (data.records && data.records.length > 0) {
+        console.log(`📋 Found ${data.records.length} records in RATES table`)
+        
+        for (const record of data.records) {
+          console.log(`📋 Record fields:`, record.fields)
+          const fields = record.fields as RateRecord
+          
+          if (fields.type === "standard" && typeof fields.value === "number") {
+            standardRate = fields.value
+            console.log(`✅ Found standard rate: ${standardRate}`)
+          } else if (fields.type === "low rmb" && typeof fields.value === "number") {
+            lowRmbRate = fields.value
+            console.log(`✅ Found low RMB rate: ${lowRmbRate}`)
+          } else {
+            console.log(`⚠️ Record has unexpected fields:`, fields)
+          }
+        }
+      } else {
+        console.log("⚠️ No records found in RATES table")
+      }
+
+      console.log(`📊 Final rates: standard=${standardRate}, lowRmb=${lowRmbRate}`)
+      return { standard: standardRate, lowRmb: lowRmbRate }
+    } catch (error) {
+      console.error("❌ Error fetching rates:", error)
+      return { standard: null, lowRmb: null }
+    }
+  }
+
+  async getRateForAmount(rmbAmount: number): Promise<{ rate: number | null; type: "standard" | "low rmb" | null }> {
+    try {
+      const rates = await this.fetchAllRates()
+      
+      if (rmbAmount >= 1000) {
+        if (rates.standard !== null) {
+          console.log(`✅ Using standard rate (${rates.standard}) for amount ¥${rmbAmount}`)
+          return { rate: rates.standard, type: "standard" }
+        }
+      } else {
+        if (rates.lowRmb !== null) {
+          console.log(`✅ Using low RMB rate (${rates.lowRmb}) for amount ¥${rmbAmount}`)
+          return { rate: rates.lowRmb, type: "low rmb" }
         }
       }
 
-      // Create new rate record if none exists
-      const recordData = {
-        Customer_Name: "SYSTEM_RATE",
-        Mobile_Number: "0000000000",
-        GHS_Amount: 0,
-        RMB_Amount: 0,
-        Reference_Code: "RATE",
-        Submitted_At: new Date().toISOString(),
-        Rate: rate,
-        Rate_Type: "EXCHANGE_RATE",
-        Status: "Completed" as const
+      // Fallback to standard rate if low RMB rate is not available
+      if (rates.standard !== null) {
+        console.log(`⚠️ Using standard rate (${rates.standard}) as fallback for amount ¥${rmbAmount}`)
+        return { rate: rates.standard, type: "standard" }
       }
 
-      const createResponse = await fetch(this.baseUrl, {
-        method: "POST",
-        headers: this.getHeaders(),
-        body: JSON.stringify({ fields: recordData }),
-      })
-
-      await this.handleAirtableResponse(createResponse)
-      console.log("✅ Created new rate record")
-      return true
+      console.log("❌ No valid rates found")
+      return { rate: null, type: null }
     } catch (error) {
-      console.error("❌ Error setting rate:", error)
-      return false
+      console.error("❌ Error getting rate for amount:", error)
+      return { rate: null, type: null }
     }
   }
 }

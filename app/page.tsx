@@ -47,9 +47,25 @@ function LandingPageContent() {
         const response = await fetch("/api/fetch-rate");
         const data = await response.json();
         if (isMounted) {
-          if (data.success && data.rate !== null) {
-            setRate(data.rate);
-            setRateError(null);
+          if (data.success) {
+            if (data.rates) {
+              // New format: rates object with standard and lowRmb
+              const standardRate = data.rates.standard;
+              if (standardRate !== null) {
+                setRate(standardRate);
+                setRateError(null);
+              } else {
+                setRate(null);
+                setRateError("No standard rate available");
+              }
+            } else if (data.rate !== null) {
+              // Legacy format: single rate
+              setRate(data.rate);
+              setRateError(null);
+            } else {
+              setRate(null);
+              setRateError("No rate available");
+            }
           } else {
             setRate(null);
             setRateError(data.error || "Failed to load rate");
@@ -139,8 +155,8 @@ function LandingPageContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Navigation */}
-      <nav className={`sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 transition-shadow duration-300 px-4 sm:px-6 py-3 sm:py-4 ${navShadow ? 'shadow-lg' : 'shadow-none'}`} id="main-navbar">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
+      <nav className={`sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-200 transition-shadow duration-300 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 ${navShadow ? 'shadow-lg' : 'shadow-none'}`} id="main-navbar">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Custom Logo */}
             <img 
@@ -152,18 +168,18 @@ function LandingPageContent() {
           </div>
           
           {/* Desktop Navigation */}
-          <div className="hidden sm:flex flex-1 justify-end items-center space-x-2">
+          <div className="hidden sm:flex flex-1 justify-end items-center space-x-3 lg:space-x-4">
             <Button
               onClick={handleAuthClick}
               variant="outline"
-              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 border-gray-300 hover:border-gray-400"
             >
               <User className="h-4 w-4" />
               <span>{session && session.user ? "Dashboard" : "Sign In"}</span>
             </Button>
             <Button
               onClick={handleBuyRMB}
-              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-base sm:text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-xl text-base sm:text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
               style={{ minWidth: '120px' }}
             >
               <span className="text-base sm:text-lg font-bold tracking-wide">BUY RMB</span>
@@ -183,7 +199,7 @@ function LandingPageContent() {
             </Button>
             <Button
               onClick={handleBuyRMB}
-              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow-lg hover:scale-105 hover:shadow-xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
               style={{ minWidth: '80px' }}
             >
               <span className="font-bold tracking-wide">BUY RMB</span>
@@ -193,18 +209,18 @@ function LandingPageContent() {
       </nav>
 
       {/* Rate Display at Top */}
-      <div className="w-full bg-gradient-to-r from-blue-100 to-purple-100 border-b border-blue-200 py-2">
-        <div className="max-w-6xl mx-auto px-4 text-center">
+      <div className="w-full bg-gradient-to-r from-blue-100 to-purple-100 border-b border-blue-200 py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {rateLoading ? (
-            <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm animate-pulse">
+            <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-lg px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-lg animate-pulse">
               Loading Rate...
             </span>
           ) : rateError ? (
-            <span className="inline-block bg-red-500 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-sm">
+            <span className="inline-block bg-red-500 text-white font-bold text-sm sm:text-lg px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-lg">
               {rateError}
             </span>
           ) : rate !== null ? (
-            <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-lg px-3 sm:px-6 py-1 sm:py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 relative overflow-hidden">
+            <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-lg px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 relative overflow-hidden">
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_ease-in-out_infinite]"></div>
               <span className="relative z-10">Today's Rate: 1 RMB = {rate.toFixed(2)} GHS</span>
             </span>
@@ -214,31 +230,31 @@ function LandingPageContent() {
 
       {/* Greeting Banner */}
       {userName && (
-        <div className="w-full bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 text-center py-2 font-semibold text-base shadow-sm">
+        <div className="w-full bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 text-center py-3 font-semibold text-base shadow-sm">
           Hello {userName}, you are welcome
         </div>
       )}
 
       {/* Hero Section */}
-      <section className="relative flex flex-col md:flex-row items-center justify-between max-w-6xl mx-auto px-6 py-16 gap-10">
+      <section className="relative flex flex-col lg:flex-row items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 gap-10 lg:gap-16">
         {/* Glassmorphism Card */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="w-full md:w-1/2 bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-10 text-center md:text-left border border-white/20"
+          className="w-full lg:w-1/2 bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 sm:p-10 lg:p-12 text-center lg:text-left border border-white/20"
         >
-          <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4 leading-tight">
-            Exchange <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">GHS to RMB</span> Instantly
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-gray-900 mb-6 leading-tight">
+            Buy <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Chinese Yuan</span> Instantly
           </h1>
-          <p className="text-base md:text-lg text-gray-700 mb-8">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-700 mb-8 leading-relaxed">
             The fastest, most secure way to buy Chinese Yuan (RMB) with Ghana Cedis. Enjoy unbeatable rates, instant funding, and total peace of mind.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Button
               onClick={handleBuyRMB}
-              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-8 py-4 rounded-xl text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
-              style={{ minWidth: '140px' }}
+              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-8 py-4 rounded-xl text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+              style={{ minWidth: '160px' }}
             >
               <span className="text-base sm:text-lg font-bold tracking-wide">Get Started</span>
             </Button>
@@ -258,12 +274,12 @@ function LandingPageContent() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.2 }}
-          className="w-full md:w-1/2 flex flex-col items-center"
+          className="w-full lg:w-1/2 flex flex-col items-center"
         >
           <motion.img
             src="/hero-illustration.png"
             alt="Payment Transfer Illustration"
-            className="max-w-[200px] md:max-w-[250px]"
+            className="max-w-[250px] sm:max-w-[300px] lg:max-w-[350px] xl:max-w-[400px]"
             style={{ objectFit: 'contain' }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -278,21 +294,21 @@ function LandingPageContent() {
       </section>
 
       {/* New Text Section */}
-      <section className="max-w-6xl mx-auto px-6 py-4 md:py-6 text-center">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="mb-4 md:mb-6"
+          className="mb-8 lg:mb-12"
         >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-gray-900 leading-tight">
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Paying</span> Securely & Swiftly
           </h2>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight mt-2">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-gray-900 leading-tight mt-2">
             with the <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Best Rates</span>
           </h2>
-          <p className="text-sm md:text-base text-gray-600 mt-4 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 mt-6 max-w-3xl mx-auto leading-relaxed">
             Experience transparent pricing, bank-level security, and real-time rate locking—so you always get the most value for your money.
           </p>
         </motion.div>
@@ -303,7 +319,7 @@ function LandingPageContent() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex justify-center items-center space-x-6 md:space-x-8 lg:space-x-12 mb-6 md:mb-8"
+          className="flex justify-center items-center space-x-8 lg:space-x-12 xl:space-x-16 mb-8 lg:mb-12"
         >
           {/* Alipay Logo */}
           <motion.div 
@@ -317,7 +333,7 @@ function LandingPageContent() {
             <img 
               src="/alipay_logo.svg" 
               alt="Alipay" 
-              className="w-32 h-32 md:w-28 md:h-28 lg:w-36 lg:h-36 object-contain"
+              className="w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 xl:w-40 xl:h-40 object-contain"
             />
           </motion.div>
           
@@ -333,7 +349,7 @@ function LandingPageContent() {
             <img 
               src="/wechat_logo.png" 
               alt="WeChat" 
-              className="w-32 h-32 md:w-28 md:h-28 lg:w-36 lg:h-36 object-contain"
+              className="w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 xl:w-40 xl:h-40 object-contain"
             />
           </motion.div>
         </motion.div>
@@ -345,29 +361,29 @@ function LandingPageContent() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8, delay: 0.2 }}
-        className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 py-8 md:py-12 px-4"
+        className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 py-8 lg:py-16 px-4 sm:px-6 lg:px-8"
       >
-        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-shadow duration-300">
-          <CardContent className="p-8 text-center flex flex-col items-center">
-            <Zap className="w-10 h-10 text-blue-500 mb-3" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Instant Funding</h3>
-            <p className="text-gray-600">Your RMB is delivered to your account within minutes, 24/7.</p>
-            </CardContent>
-          </Card>
-        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-shadow duration-300">
-          <CardContent className="p-8 text-center flex flex-col items-center">
-            <ShieldCheck className="w-10 h-10 text-purple-600 mb-3" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Safe & Secure</h3>
-            <p className="text-gray-600">Your funds and data are protected with industry-leading security.</p>
-            </CardContent>
-          </Card>
-        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-shadow duration-300">
-          <CardContent className="p-8 text-center flex flex-col items-center">
-            <Users className="w-10 h-10 text-blue-500 mb-3" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Trusted by Many</h3>
-            <p className="text-gray-600">Hundreds of happy customers rely on TRADE RMB for their currency needs.</p>
-            </CardContent>
-          </Card>
+        <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 rounded-2xl">
+          <CardContent className="p-8 lg:p-10 text-center flex flex-col items-center">
+            <Zap className="w-12 h-12 text-blue-500 mb-4" />
+            <h3 className="text-xl lg:text-2xl font-semibold text-gray-900 mb-3">Instant Funding</h3>
+            <p className="text-gray-600 text-base lg:text-lg">Your RMB is delivered to your account within minutes, 24/7.</p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 rounded-2xl">
+          <CardContent className="p-8 lg:p-10 text-center flex flex-col items-center">
+            <ShieldCheck className="w-12 h-12 text-purple-600 mb-4" />
+            <h3 className="text-xl lg:text-2xl font-semibold text-gray-900 mb-3">Safe & Secure</h3>
+            <p className="text-gray-600 text-base lg:text-lg">Your funds and data are protected with industry-leading security.</p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 rounded-2xl">
+          <CardContent className="p-8 lg:p-10 text-center flex flex-col items-center">
+            <Users className="w-12 h-12 text-blue-500 mb-4" />
+            <h3 className="text-xl lg:text-2xl font-semibold text-gray-900 mb-3">Trusted by Many</h3>
+            <p className="text-gray-600 text-base lg:text-lg">Hundreds of happy customers rely on TRADE RMB for their currency needs.</p>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Referral Section */}
@@ -376,11 +392,11 @@ function LandingPageContent() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8, delay: 0.3 }}
-        className="max-w-2xl mx-auto mb-8 md:mb-12"
+        className="max-w-4xl mx-auto mb-8 lg:mb-16 px-4 sm:px-6 lg:px-8"
       >
-        <div className="bg-white/80 backdrop-blur-sm border border-blue-200 rounded-2xl shadow-xl text-center p-6 md:p-8">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">Refer & Earn</h2>
-          <p className="text-gray-700 mb-3">
+        <div className="bg-white/90 backdrop-blur-sm border border-blue-200 rounded-3xl shadow-xl text-center p-8 lg:p-12">
+          <h2 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">Refer & Earn</h2>
+          <p className="text-gray-700 text-base lg:text-lg mb-6">
             Invite your friends to TRADE RMB and earn cash rewards for every successful referral.
           </p>
           <motion.div

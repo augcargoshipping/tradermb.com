@@ -1,51 +1,42 @@
-# Email Setup Guide for Password Reset
+# Email Setup for Forgot Password Functionality
 
-This guide will help you set up email functionality for the password reset feature.
+## Gmail Setup (Recommended)
 
-## Option 1: Gmail Setup (Recommended for Development)
+### Step 1: Enable 2-Factor Authentication
+1. Go to your Google Account settings
+2. Navigate to Security
+3. Enable 2-Step Verification
 
-### 1. Enable 2-Factor Authentication
-- Go to your Google Account settings
-- Enable 2-Factor Authentication if not already enabled
+### Step 2: Generate App Password
+1. Go to your Google Account settings
+2. Navigate to Security
+3. Under "2-Step Verification", click on "App passwords"
+4. Select "Mail" and "Other (Custom name)"
+5. Enter "TRADE RMB" as the name
+6. Click "Generate"
+7. Copy the 16-character password (it will look like: `abcd efgh ijkl mnop`)
 
-### 2. Generate App Password
-- Go to Google Account → Security → 2-Step Verification
-- Click on "App passwords"
-- Select "Mail" and "Other (Custom name)"
-- Name it "TRADE RMB Password Reset"
-- Copy the generated 16-character password
-
-### 3. Environment Variables
+### Step 3: Update Environment Variables
 Add these to your `.env.local` file:
 
 ```env
-EMAIL_USER=your-email@gmail.com
+EMAIL_USER=your-gmail@gmail.com
 EMAIL_PASSWORD=your-16-character-app-password
 ```
 
-## Option 2: Other Email Services
+### Step 4: Test the Setup
+1. Restart your development server
+2. Try the forgot password functionality
+3. Check the console for email status messages
 
-### For Outlook/Hotmail:
-```env
-EMAIL_USER=your-email@outlook.com
-EMAIL_PASSWORD=your-app-password
-```
+## Alternative Email Services
 
-### For Yahoo:
-```env
-EMAIL_USER=your-email@yahoo.com
-EMAIL_PASSWORD=your-app-password
-```
+### Option 1: Use a Different Email Service
+You can modify the email configuration in `app/api/auth/forgot-password/route.ts`:
 
-## Option 3: Custom SMTP Server
-
-If you have your own SMTP server, update the transporter configuration in `app/api/auth/forgot-password/route.ts`:
-
-```javascript
-const transporter = nodemailer.createTransporter({
-  host: "your-smtp-host.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
+```typescript
+transporter = nodemailer.createTransporter({
+  service: "outlook", // or "yahoo", "hotmail", etc.
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
@@ -53,69 +44,54 @@ const transporter = nodemailer.createTransporter({
 });
 ```
 
-## Option 4: Email Service Providers
-
-### SendGrid
-```javascript
-const transporter = nodemailer.createTransporter({
-  host: "smtp.sendgrid.net",
-  port: 587,
-  auth: {
-    user: "apikey",
-    pass: process.env.SENDGRID_API_KEY,
-  },
-});
-```
-
-### Mailgun
-```javascript
-const transporter = nodemailer.createTransporter({
-  host: "smtp.mailgun.org",
-  port: 587,
-  auth: {
-    user: process.env.MAILGUN_USER,
-    pass: process.env.MAILGUN_PASSWORD,
-  },
-});
-```
-
-## Testing the Email Setup
-
-1. Start your development server: `npm run dev`
-2. Go to `/auth/forgot-password`
-3. Enter a valid email address
-4. Check if the email is sent successfully
+### Option 2: Use a Transactional Email Service
+For production, consider using services like:
+- SendGrid
+- Mailgun
+- AWS SES
+- Resend
 
 ## Troubleshooting
 
-### Common Issues:
+### Common Gmail Issues:
+1. **"Username and Password not accepted"**
+   - Make sure you're using an App Password, not your regular password
+   - Ensure 2-Factor Authentication is enabled
+   - Check that the email and password are correct
 
-1. **Authentication failed**: Make sure you're using an app password, not your regular password
-2. **Connection timeout**: Check your internet connection and firewall settings
-3. **Email not received**: Check spam folder and email service settings
+2. **"Less secure app access"**
+   - This setting is deprecated, use App Passwords instead
 
-### For Development/Testing:
+3. **"Connection timeout"**
+   - Check your internet connection
+   - Try using port 587 instead of 465
 
-If you don't want to set up real email during development, you can:
+### Development Fallback:
+If email setup fails, the system will:
+1. Generate the reset token
+2. Store it in Airtable
+3. Log the reset URL to the console
+4. Return a success message with development information
 
-1. Use a service like Mailtrap.io for testing
-2. Log the reset link to console instead of sending email
-3. Use a mock email service
+## Testing the Forgot Password Flow
 
-## Security Notes
+1. **Start the development server**
+2. **Go to the forgot password page**
+3. **Enter your email address**
+4. **Check the console for the reset URL**
+5. **Copy the URL and open it in your browser**
+6. **Set a new password**
 
-- Never commit email credentials to version control
-- Use environment variables for all sensitive information
-- Consider using a dedicated email service for production
-- Implement rate limiting for password reset requests
-- Set appropriate token expiration times
+The reset URL will look like:
+```
+http://localhost:3000/auth/reset-password?token=abc123...
+```
 
 ## Production Deployment
 
-For production, consider using:
-- SendGrid
-- Mailgun
-- Amazon SES
-- Resend.com
-
-These services provide better deliverability and monitoring than personal email accounts. 
+For production, make sure to:
+1. Set up proper email credentials
+2. Use a reliable email service
+3. Test the email functionality thoroughly
+4. Monitor email delivery rates
+5. Set up proper error handling and logging 
