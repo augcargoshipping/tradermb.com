@@ -128,7 +128,6 @@ export async function POST(request: NextRequest) {
       RMB_Amount: parseFloat(rmbAmount),
       Reference_Code: referenceCode,
       Submitted_At: new Date().toISOString(),
-      Rate: parseFloat(exchangeRate) || undefined,
       ...(qrFileUrl && {
         QR_CODE: qrFileUrl, // Store the Cloudinary URL as text
       }),
