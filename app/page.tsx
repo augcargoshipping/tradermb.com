@@ -44,37 +44,48 @@ function LandingPageContent() {
       try {
         setRateLoading(true);
         setRateError(null);
-        const response = await fetch("/api/fetch-rate");
+        console.log("🔄 Loading rate from API...");
+        const response = await fetch(`/api/fetch-rate?t=${Date.now()}`);
         const data = await response.json();
+        console.log("📊 API Response:", data);
+        
         if (isMounted) {
           if (data.success) {
             if (data.rates) {
               // New format: rates object with standard and lowRmb
               const standardRate = data.rates.standard;
+              console.log(`📈 Standard rate from API: ${standardRate}`);
               if (standardRate !== null) {
                 setRate(standardRate);
                 setRateError(null);
+                console.log(`✅ Rate set to: ${standardRate}`);
               } else {
                 setRate(null);
                 setRateError("No standard rate available");
+                console.log("❌ No standard rate available");
               }
             } else if (data.rate !== null) {
               // Legacy format: single rate
+              console.log(`📈 Legacy rate from API: ${data.rate}`);
               setRate(data.rate);
               setRateError(null);
+              console.log(`✅ Rate set to: ${data.rate}`);
             } else {
               setRate(null);
               setRateError("No rate available");
+              console.log("❌ No rate available");
             }
           } else {
             setRate(null);
             setRateError(data.error || "Failed to load rate");
+            console.log(`❌ API error: ${data.error}`);
           }
         }
       } catch (error) {
         if (isMounted) {
           setRate(null);
           setRateError("Failed to load rate");
+          console.log("❌ Network error:", error);
         }
       } finally {
         if (isMounted) setRateLoading(false);

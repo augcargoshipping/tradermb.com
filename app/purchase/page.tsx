@@ -152,7 +152,7 @@ function PurchaseForm() {
   useEffect(() => {
     async function loadRate() {
       try {
-        const response = await fetch("/api/fetch-rate")
+        const response = await fetch(`/api/fetch-rate?t=${Date.now()}`)
         const data = await response.json()
         
         if (data.success) {
