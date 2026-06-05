@@ -5,8 +5,6 @@ import { runMigrations } from "@/lib/db/migrate"
 import { orderRepo } from "@/lib/db/order-repo"
 import { getAuthSession } from "@/lib/auth-server"
 
-const MAX_QR_BYTES = 600_000
-
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -80,12 +78,6 @@ export async function POST(request: NextRequest) {
     let qrMime: string | null = null
     if (qrFile) {
       const buf = Buffer.from(await qrFile.arrayBuffer())
-      if (buf.length > MAX_QR_BYTES) {
-        return NextResponse.json(
-          { success: false, error: "QR image too large", details: `Max ${MAX_QR_BYTES / 1000}KB. Use a smaller screenshot.` },
-          { status: 400 }
-        )
-      }
       qrMime =
         qrFile.type && qrFile.type.startsWith("image/") ? qrFile.type : "image/png"
       qrImage = new Uint8Array(buf)

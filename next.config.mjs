@@ -12,7 +12,13 @@ const nextConfig = {
   },
   // Vercel optimizations
   compress: true,
-  poweredByHeader: false
+  poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "25mb",
+    },
+    middlewareClientMaxBodySize: "25mb",
+  },
 }
 
 export default nextConfig 
