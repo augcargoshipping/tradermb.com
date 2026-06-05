@@ -1,0 +1,213 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 168 76% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 32% 93%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 28% 94%;
+    --muted-foreground: 215 16% 42%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 24% 88%;
+    --input: 214 24% 88%;
+    --ring: 168 76% 32%;
+    --radius: 0.875rem;
+
+    --brand-ink: 222 47% 11%;
+    --brand-slate: 215 25% 27%;
+    --brand-mist: 210 40% 96%;
+    --brand-emerald: 168 76% 32%;
+    --brand-emerald-dark: 168 72% 26%;
+    --brand-gold: 38 92% 50%;
+    --brand-surface: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply relative min-h-[100dvh] flex flex-col overflow-x-hidden bg-background;
+  }
+
+  .section-pad {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-tight {
+    @apply mx-auto w-full max-w-6xl;
+  }
+
+  .glass-card {
+    @apply relative rounded-3xl border border-white/70 bg-white/85 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.15)] backdrop-blur-xl;
+  }
+
+  .glass-card::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0 z-0 rounded-3xl;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      transparent 50%,
+      rgba(16, 185, 129, 0.06) 100%
+    );
+  }
+
+  .glass-card > * {
+    @apply relative z-[1];
+  }
+
+  .feature-card {
+    @apply relative overflow-hidden rounded-2xl border border-emerald-100/80 bg-white p-6 shadow-[0_4px_24px_rgba(15,23,42,0.06)] transition duration-300;
+  }
+
+  .feature-card:hover {
+    @apply -translate-y-1 border-emerald-200 shadow-[0_12px_40px_rgba(16,185,129,0.12)];
+  }
+
+  .hero-gradient {
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(ellipse 90% 70% at 10% -5%, hsl(168 76% 42% / 0.22), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 95% 5%, hsl(38 92% 50% / 0.18), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 50% 100%, hsl(168 60% 40% / 0.08), transparent 60%),
+      linear-gradient(180deg, hsl(210 50% 97%) 0%, hsl(var(--background)) 45%, hsl(210 35% 96%) 100%);
+  }
+
+  .mesh-dots {
+    background-image: radial-gradient(hsl(168 40% 50% / 0.12) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .hero-glow-ring {
+    @apply absolute rounded-full blur-3xl;
+    background: radial-gradient(circle, hsl(168 70% 45% / 0.35) 0%, transparent 70%);
+  }
+
+  .section-heading {
+    @apply font-display text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl;
+  }
+
+  .section-sub {
+    @apply mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-muted-foreground sm:text-base;
+  }
+
+  .badge-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-3 py-1 text-xs font-semibold text-emerald-800;
+  }
+
+  .stat-tile {
+    @apply flex flex-col items-center rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm sm:px-6;
+  }
+
+  .step-card {
+    @apply relative flex flex-col items-center rounded-2xl border border-emerald-100 bg-gradient-to-b from-white to-emerald-50/40 p-6 text-center shadow-sm;
+  }
+
+  .text-gradient-brand {
+    @apply bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-500 bg-clip-text text-transparent;
+  }
+
+  .btn-primary {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-7 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:from-emerald-700 hover:to-teal-700 hover:shadow-emerald-600/40 active:scale-[0.98];
+  }
+
+  .btn-accent {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-300 px-7 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-amber-400/30 transition hover:from-amber-300 hover:to-amber-200 active:scale-[0.98];
+  }
+
+  .btn-outline-light {
+    @apply inline-flex min-h-[48px] items-center justify-center rounded-xl border-2 border-slate-200/90 bg-white/80 px-6 py-3 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur transition hover:border-emerald-300 hover:bg-white hover:shadow-md;
+  }
+
+  .cta-panel {
+    @apply relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 px-6 py-12 text-center shadow-2xl sm:px-12 sm:py-16;
+  }
+
+  .cta-panel::before {
+    content: "";
+    @apply pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-40;
+    background: radial-gradient(circle, hsl(168 70% 45% / 0.5), transparent 70%);
+  }
+
+  .cta-panel::after {
+    content: "";
+    @apply pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full opacity-30;
+    background: radial-gradient(circle, hsl(38 90% 50% / 0.4), transparent 70%);
+  }
+
+  .input-touch {
+    @apply min-h-[48px] text-base sm:text-sm;
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-top {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 4s ease-in-out infinite;
+}
