@@ -3,38 +3,31 @@ import { airtableService } from "@/lib/airtable-service";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-// Configure email transporter with better error handling
-let transporter: any = null;
+let transporter: nodemailer.Transporter | null = null;
 
-try {
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+function getTransporter() {
+  if (transporter) return transporter;
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) return null;
+
+  try {
     transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD, // Use app password for Gmail
+        pass: process.env.EMAIL_PASSWORD,
       },
-      // Add additional options for better reliability
       secure: true,
       port: 465,
       tls: {
-        rejectUnauthorized: false
-      }
+        rejectUnauthorized: false,
+      },
     });
-
-    // Test the connection
-    transporter.verify(function(error: any, success: any) {
-      if (error) {
-        console.log("❌ Email server connection failed:", error.message);
-        transporter = null; // Disable email sending if connection fails
-      } else {
-        console.log("✅ Email server is ready to send messages");
-      }
-    });
+    return transporter;
+  } catch (error) {
+    console.log("❌ Email configuration error:", error);
+    transporter = null;
+    return null;
   }
-} catch (error) {
-  console.log("❌ Email configuration error:", error);
-  transporter = null;
 }
 
 export async function POST(request: NextRequest) {
@@ -75,8 +68,9 @@ export async function POST(request: NextRequest) {
     // Create reset URL
     const resetUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}`;
 
-    // Send email if transporter is configured and working
-    if (transporter) {
+    const mailer = getTransporter();
+
+    if (mailer) {
       try {
         const mailOptions = {
           from: process.env.EMAIL_USER,
@@ -121,7 +115,7 @@ export async function POST(request: NextRequest) {
           `,
         };
 
-        await transporter.sendMail(mailOptions);
+        await mailer.sendMail(mailOptions);
         console.log("✅ Password reset email sent to:", email);
         
         return NextResponse.json({ 
