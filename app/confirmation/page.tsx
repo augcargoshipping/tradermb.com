@@ -253,7 +253,7 @@ export default function ConfirmationPage() {
                         I have sent the mobile money payment
                       </Label>
                       <p className="mt-1 text-xs leading-relaxed text-emerald-800 sm:text-sm">
-                        Tick this after you pay. Our team at August Cargo Logistics will be notified to verify your payment.
+                        Tick this after you pay. Our team at Trade RMB will be notified to verify your payment.
                       </p>
                       {confirmingMomo && (
                         <p className="mt-2 text-xs text-emerald-700">Notifying our team…</p>

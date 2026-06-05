@@ -213,6 +213,65 @@ export class OrderRepo {
     })
     return result.rows.map((row) => mapOrder(row as Record<string, unknown>))
   }
+
+  /** Fast admin list — omits QR BLOBs (load per order via getOrderQrDataUri). */
+  async listRecentOrdersSummary(limit: number): Promise<AdminOrderSummary[]> {
+    const db = getDbClient()
+    const result = await db.execute({
+      sql: `SELECT id, customer_name, email_address, mobile_number, referral_name,
+                   ghs_amount, rmb_amount, reference_code, status, submitted_at,
+                   qr_url, qr_data_uri, qr_mime,
+                   CASE WHEN qr_image IS NOT NULL AND length(qr_image) > 0 THEN 1 ELSE 0 END AS has_qr_blob
+            FROM orders ORDER BY submitted_at DESC LIMIT ?`,
+      args: [limit],
+    })
+    return result.rows.map((row) => {
+      const r = row as Record<string, unknown>
+      const hasLegacyQr =
+        (r.qr_data_uri != null && String(r.qr_data_uri).length > 0) ||
+        (r.qr_url != null && String(r.qr_url).length > 0)
+      const hasQrBlob = Number(r.has_qr_blob) === 1
+      return {
+        id: Number(r.id),
+        customer_name: String(r.customer_name),
+        email_address: String(r.email_address),
+        mobile_number: String(r.mobile_number),
+        referral_name: r.referral_name ? String(r.referral_name) : null,
+        ghs_amount: Number(r.ghs_amount),
+        rmb_amount: Number(r.rmb_amount),
+        reference_code: String(r.reference_code),
+        status: String(r.status) as OrderStatus,
+        submitted_at: String(r.submitted_at),
+        has_qr: hasQrBlob || hasLegacyQr,
+      }
+    })
+  }
+
+  async getOrderQrDataUri(id: number): Promise<string | null> {
+    const order = await this.getOrderById(id)
+    if (!order) return null
+    if (order.qr_image && order.qr_image.length > 0) {
+      const { bytesToDataUri } = await import("@/lib/orders/blob")
+      return bytesToDataUri(order.qr_image, order.qr_mime || "image/png")
+    }
+    if (order.qr_data_uri) return order.qr_data_uri
+    if (order.qr_url) return order.qr_url
+    return null
+  }
+}
+
+export interface AdminOrderSummary {
+  id: number
+  customer_name: string
+  email_address: string
+  mobile_number: string
+  referral_name: string | null
+  ghs_amount: number
+  rmb_amount: number
+  reference_code: string
+  status: OrderStatus
+  submitted_at: string
+  has_qr: boolean
 }
 
 export const orderRepo = new OrderRepo()

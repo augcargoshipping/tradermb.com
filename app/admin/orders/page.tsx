@@ -18,7 +18,6 @@ type OrderRow = {
   reference_code: string
   status: string
   submitted_at: string
-  qr_image_data_uri: string | null
   has_qr: boolean
 }
 
@@ -31,6 +30,8 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
+  const [qrByOrderId, setQrByOrderId] = useState<Record<number, string>>({})
+  const [loadingQrId, setLoadingQrId] = useState<number | null>(null)
 
   const load = useCallback(async (adminKey: string) => {
     const trimmedKey = adminKey.trim()
@@ -89,6 +90,8 @@ export default function AdminOrdersPage() {
       setError("Key is too short (set ADMIN_ORDERS_KEY in .env — at least 8 characters).")
       return
     }
+    setError(null)
+    setLoading(true)
     setSavedKey(trimmed)
     try {
       sessionStorage.setItem("tradeRmbAdminOrdersKey", trimmed)
@@ -96,6 +99,29 @@ export default function AdminOrdersPage() {
       /* ignore */
     }
     void load(trimmed)
+  }
+
+  const loadQr = async (orderId: number) => {
+    if (qrByOrderId[orderId] || loadingQrId === orderId) return
+    setLoadingQrId(orderId)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/qr`, {
+        headers: { "x-admin-key": savedKey.trim() },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || "Could not load QR image")
+        return
+      }
+      if (typeof data.qr_image_data_uri === "string") {
+        setQrByOrderId((prev) => ({ ...prev, [orderId]: data.qr_image_data_uri }))
+      }
+    } catch {
+      setError("Network error loading QR")
+    } finally {
+      setLoadingQrId(null)
+    }
   }
 
   const setStatus = async (id: number, status: (typeof STATUS_ACTIONS)[number]) => {
@@ -160,7 +186,7 @@ export default function AdminOrdersPage() {
               className="bg-slate-900 border-slate-600 text-white"
             />
             <Button className="w-full" onClick={handleUnlock} disabled={loading}>
-              Unlock
+              {loading ? "Opening orders…" : "Unlock"}
             </Button>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <p className="text-xs text-slate-500 leading-relaxed">
@@ -267,19 +293,29 @@ export default function AdminOrdersPage() {
                       </div>
                     </div>
                     <div className="p-4 bg-slate-900/50">
-                      {o.has_qr && o.qr_image_data_uri ? (
+                      {o.has_qr ? (
                         <div className="flex flex-col items-center gap-3">
-                          <div className="rounded-xl bg-white p-2 shadow-inner">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={o.qr_image_data_uri}
-                              alt=""
-                              className="w-44 h-44 object-contain"
-                            />
-                          </div>
-                          <span className="text-xs text-slate-400 text-center">
-                            Image bytes live in Turso (<code className="text-slate-300">qr_image</code> BLOB)
-                          </span>
+                          {qrByOrderId[o.id] ? (
+                            <div className="rounded-xl bg-white p-2 shadow-inner">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={qrByOrderId[o.id]}
+                                alt="Customer Alipay QR"
+                                className="h-44 w-44 object-contain"
+                              />
+                            </div>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={loadingQrId === o.id}
+                              onClick={() => void loadQr(o.id)}
+                            >
+                              <QrCode className="mr-2 h-4 w-4" />
+                              {loadingQrId === o.id ? "Loading QR…" : "View Alipay QR"}
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <div className="flex flex-col items-center gap-2 text-slate-500 py-4">

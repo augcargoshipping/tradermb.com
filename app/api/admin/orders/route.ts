@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { runMigrations } from "@/lib/db/migrate"
 import { orderRepo, type OrderStatus } from "@/lib/db/order-repo"
-import { bytesToDataUri } from "@/lib/orders/blob"
 import { notifyCustomerRmbCompleted } from "@/lib/notify-customer-order"
 
 function isAuthorized(request: NextRequest): boolean {
@@ -26,16 +25,7 @@ function unauthorizedResponse() {
   )
 }
 
-function orderToAdminJson(o: Awaited<ReturnType<typeof orderRepo.listRecentOrders>>[number]) {
-  let qr_image_data_uri: string | null = null
-  if (o.qr_image && o.qr_image.length > 0) {
-    qr_image_data_uri = bytesToDataUri(o.qr_image, o.qr_mime || "image/png")
-  } else if (o.qr_data_uri) {
-    qr_image_data_uri = o.qr_data_uri
-  } else if (o.qr_url) {
-    qr_image_data_uri = o.qr_url
-  }
-
+function orderToAdminJson(o: Awaited<ReturnType<typeof orderRepo.listRecentOrdersSummary>>[number]) {
   return {
     id: o.id,
     customer_name: o.customer_name,
@@ -47,8 +37,7 @@ function orderToAdminJson(o: Awaited<ReturnType<typeof orderRepo.listRecentOrder
     reference_code: o.reference_code,
     status: o.status,
     submitted_at: o.submitted_at,
-    qr_image_data_uri,
-    has_qr: Boolean(qr_image_data_uri),
+    has_qr: o.has_qr,
   }
 }
 
@@ -59,8 +48,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    await runMigrations()
-    const orders = await orderRepo.listRecentOrders(40)
+    const orders = await orderRepo.listRecentOrdersSummary(40)
     return NextResponse.json({
       orders: orders.map(orderToAdminJson),
     })
