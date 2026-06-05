@@ -4,6 +4,7 @@ import { resolveExchangeRate } from "@/lib/exchange-rate"
 import { runMigrations } from "@/lib/db/migrate"
 import { orderRepo } from "@/lib/db/order-repo"
 import { getAuthSession } from "@/lib/auth-server"
+import { notifyAdminNewOrder } from "@/lib/notify-admin-new-order"
 
 export async function POST(request: NextRequest) {
   try {
@@ -103,6 +104,17 @@ export async function POST(request: NextRequest) {
       qrImage,
       qrMime,
       userId,
+    })
+
+    void notifyAdminNewOrder({
+      referenceCode,
+      customerName: fullName.trim(),
+      email: email.trim(),
+      mobileNumber: mobileNumber.trim(),
+      ghsAmount: ghsNum,
+      rmbAmount: rmbNum,
+      referralName: referralName?.toString().trim() || undefined,
+      hasQr: !!qrImage,
     })
 
     return NextResponse.json({
