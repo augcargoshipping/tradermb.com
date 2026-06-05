@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
 import { useSession } from "next-auth/react"
+import { momoNumberToWhatsApp } from "@/lib/payment-settings"
 
 interface SubmissionData {
   fullName: string
@@ -31,6 +32,8 @@ export default function ConfirmationPage() {
   const [showReferModal, setShowReferModal] = useState(false)
   const [loadingRate, setLoadingRate] = useState(true)
   const [rate, setRate] = useState<number | null>(null)
+  const [paymentNumber, setPaymentNumber] = useState<string | null>(null)
+  const [paymentName, setPaymentName] = useState<string | null>(null)
   const { toast } = useToast();
   const [userName, setUserName] = useState("");
 
@@ -44,6 +47,22 @@ export default function ConfirmationPage() {
       router.push("/")
     }
   }, [router])
+
+  useEffect(() => {
+    async function loadPaymentDetails() {
+      try {
+        const res = await fetch("/api/payment-details")
+        const data = await res.json()
+        if (data.success) {
+          if (typeof data.number === "string") setPaymentNumber(data.number)
+          if (typeof data.name === "string") setPaymentName(data.name)
+        }
+      } catch (err) {
+        console.error("Failed to load payment details", err)
+      }
+    }
+    loadPaymentDetails()
+  }, [])
 
   const handleCopyReference = async () => {
     if (submissionData?.referenceCode) {
@@ -150,9 +169,13 @@ export default function ConfirmationPage() {
                 </div>
                 <div className="bg-white rounded-lg p-3 border border-orange-300">
                   <p className="text-sm font-medium text-gray-700 mb-2">Send payment to:</p>
-                  <p className="text-2xl font-bold text-orange-600 text-center">0597384360</p>
+                  <p className="text-2xl font-bold text-orange-600 text-center">
+                    {paymentNumber ?? "Loading…"}
+                  </p>
                   <p className="text-sm text-gray-600 text-center mt-1">(MTN Mobile Money)</p>
-                  <p className="text-sm font-medium text-gray-700 text-center mt-2">Food Source Limited</p>
+                  <p className="text-sm font-medium text-gray-700 text-center mt-2">
+                    {paymentName ?? "Loading…"}
+                  </p>
                 </div>
                 <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800 font-medium mb-2">Important:</p>
@@ -176,7 +199,7 @@ export default function ConfirmationPage() {
                     const message = encodeURIComponent(
                       `Hello, I am a customer from TRADE RMB and I want to pay in person. My reference code is: ${submissionData.referenceCode}`
                     );
-                    const whatsappUrl = `https://wa.me/233597384360?text=${message}`;
+                    const whatsappUrl = `https://wa.me/${paymentNumber ? momoNumberToWhatsApp(paymentNumber) : "233594669717"}?text=${message}`;
                     window.open(whatsappUrl, '_blank');
                   }}
                   className="bg-red-700 hover:bg-red-800 text-white font-medium px-4 py-2 rounded-lg flex items-center justify-center mx-auto"
@@ -303,7 +326,7 @@ export default function ConfirmationPage() {
             onClick={() => {
               const userName = session?.user?.name || "a customer";
               const message = encodeURIComponent(`Hello Trade RMB support! This is ${userName}.`)
-              const whatsappUrl = `https://wa.me/233597384360?text=${message}`
+              const whatsappUrl = `https://wa.me/${paymentNumber ? momoNumberToWhatsApp(paymentNumber) : "233594669717"}?text=${message}`
               window.open(whatsappUrl, '_blank')
             }}
             className="mt-2 bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg flex items-center justify-center mx-auto"
