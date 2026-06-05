@@ -44,7 +44,7 @@ export function RateAdminDialog({ open, onOpenChange, onRateSaved }: RateAdminDi
         if (rateData.rate === 0) {
           setNewRate("0")
         } else if (rateData.rate > 0) {
-          setNewRate((1 / rateData.rate).toFixed(2))
+          setNewRate(rateData.rate.toFixed(2))
         }
       }
     } else {
@@ -54,12 +54,11 @@ export function RateAdminDialog({ open, onOpenChange, onRateSaved }: RateAdminDi
 
   const handleSave = async () => {
     setError(null)
-    const ghsPerRmb = parseFloat(newRate)
-    if (!Number.isFinite(ghsPerRmb) || ghsPerRmb < 0) {
-      setError("Enter a valid number (e.g. 1.85), or 0 to pause trading until the rate is posted")
+    const storedRate = parseFloat(newRate)
+    if (!Number.isFinite(storedRate) || storedRate < 0) {
+      setError("Enter a valid number (e.g. 0.52), or 0 to pause trading until the rate is posted")
       return
     }
-    const storedRate = ghsPerRmb === 0 ? 0 : 1 / ghsPerRmb
     const res = await fetch("/api/rate-admin/rate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -129,17 +128,17 @@ export function RateAdminDialog({ open, onOpenChange, onRateSaved }: RateAdminDi
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-rate">Homepage rate: 1 RMB = ___ GHS</Label>
+              <Label htmlFor="new-rate">Homepage rate: 1 GHS = ___ RMB</Label>
               <Input
                 id="new-rate"
                 inputMode="decimal"
                 value={newRate}
                 onChange={(e) => setNewRate(e.target.value)}
                 className="input-touch"
-                placeholder="e.g. 1.85"
+                placeholder="e.g. 0.52"
               />
               <p className="text-xs text-muted-foreground">
-                Example: 1.85 means customers pay ₵1.85 per ¥1. Enter <strong>0</strong> to show
+                Example: 0.52 means ¥0.52 RMB for every ₵1 GHS. Enter <strong>0</strong> to show
                 &quot;Rate will be posted soon&quot; and pause new trades until you set a real rate.
               </p>
             </div>

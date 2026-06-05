@@ -8,7 +8,8 @@ import type { RateDisplayStatus } from "@/hooks/use-exchange-rate"
 type RateStripProps = {
   loading: boolean
   status: RateDisplayStatus
-  ghsPerRmb: number | null
+  /** RMB received per 1 GHS paid (e.g. 0.52). */
+  rmbPerGhs: number | null
   pendingMessage: string
   tradingEnabled: boolean
   onRateTap?: () => void
@@ -18,14 +19,14 @@ type RateStripProps = {
 export function RateStrip({
   loading,
   status,
-  ghsPerRmb,
+  rmbPerGhs,
   pendingMessage,
   tradingEnabled,
   onRateTap,
   className,
 }: RateStripProps) {
   const showPending = !loading && status === "pending"
-  const showActive = !loading && status === "active" && ghsPerRmb !== null
+  const showActive = !loading && status === "active" && rmbPerGhs !== null
 
   return (
     <section
@@ -88,7 +89,7 @@ export function RateStrip({
               </div>
 
               <p className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
-                1 RMB = {ghsPerRmb.toFixed(2)} GHS
+                1 GHS = {rmbPerGhs.toFixed(2)} RMB
               </p>
 
               <p className="text-xs text-emerald-100/75">

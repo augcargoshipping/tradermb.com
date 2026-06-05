@@ -30,8 +30,8 @@ export function orderRecordToDashboardOrder(o: OrderRecord): DashboardOrder {
   }
 
   const rate =
-    o.rmb_amount > 0
-      ? `1 RMB = ${(o.ghs_amount / o.rmb_amount).toFixed(2)} GHS`
+    o.ghs_amount > 0
+      ? `1 GHS = ${(o.rmb_amount / o.ghs_amount).toFixed(2)} RMB`
       : "N/A"
 
   return {

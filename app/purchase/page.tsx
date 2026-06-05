@@ -137,7 +137,6 @@ function PurchaseForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const {
     rate: rmbPerGhs,
-    ghsPerRmb,
     loading: loadingRate,
     status: rateStatus,
     tradingEnabled,
@@ -592,7 +591,7 @@ function PurchaseForm() {
                     You can&apos;t start a new trade until an admin posts today&apos;s rate. Check back soon.
                   </p>
                 </div>
-              ) : !rmbPerGhs || !ghsPerRmb ? (
+              ) : !rmbPerGhs ? (
                 <p className="text-sm text-muted-foreground">Rate is not available yet.</p>
               ) : (
                 <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-amber-50/80 p-4">
@@ -614,7 +613,7 @@ function PurchaseForm() {
                         <p className="text-muted-foreground">Enter an amount to see your conversion.</p>
                       )}
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Today&apos;s rate: 1 RMB = {ghsPerRmb.toFixed(2)} GHS
+                        Today&apos;s rate: 1 GHS = {rmbPerGhs.toFixed(2)} RMB
                       </p>
                     </div>
                   </div>

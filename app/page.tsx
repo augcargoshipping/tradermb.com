@@ -71,7 +71,7 @@ const faqs = [
 function LandingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { ghsPerRmb, loading, status, tradingEnabled, pendingMessage, applyRate } = useExchangeRate()
+  const { rate: rmbPerGhs, loading, status, tradingEnabled, pendingMessage, applyRate } = useExchangeRate()
   const [referralName, setReferralName] = useState("")
   const [portalOpen, setPortalOpen] = useState(false)
   const tapCount = useRef(0)
@@ -100,7 +100,7 @@ function LandingContent() {
       <RateStrip
         loading={loading}
         status={status}
-        ghsPerRmb={ghsPerRmb}
+        rmbPerGhs={rmbPerGhs}
         pendingMessage={pendingMessage}
         tradingEnabled={tradingEnabled}
         onRateTap={handleRateTap}
@@ -154,11 +154,11 @@ function LandingContent() {
                         <strong>{pendingMessage}</strong> — trading paused for now.
                       </span>
                     </div>
-                  ) : ghsPerRmb !== null ? (
+                  ) : rmbPerGhs !== null ? (
                     <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/90 px-4 py-2.5">
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                       <span className="text-sm text-slate-700">
-                        Today: <strong className="text-emerald-800">1 RMB = {ghsPerRmb.toFixed(2)} GHS</strong>
+                        Today: <strong className="text-emerald-800">1 GHS = {rmbPerGhs.toFixed(2)} RMB</strong>
                       </span>
                     </div>
                   ) : null}
