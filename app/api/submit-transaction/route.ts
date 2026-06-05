@@ -5,6 +5,7 @@ import { runMigrations } from "@/lib/db/migrate"
 import { orderRepo } from "@/lib/db/order-repo"
 import { getAuthSession } from "@/lib/auth-server"
 import { notifyAdminNewOrder } from "@/lib/notify-admin-new-order"
+import { notifyCustomerPaymentInstructions } from "@/lib/notify-customer-order"
 
 export async function POST(request: NextRequest) {
   try {
@@ -115,16 +116,23 @@ export async function POST(request: NextRequest) {
       userId,
     })
 
-    await notifyAdminNewOrder({
+    const orderEmail = {
       referenceCode,
       customerName: fullName.trim(),
       email: email.trim(),
       mobileNumber: mobileNumber.trim(),
       ghsAmount: ghsNum,
       rmbAmount: rmbNum,
-      referralName: referralName?.toString().trim() || undefined,
-      hasQr: true,
-    })
+    }
+
+    await Promise.all([
+      notifyAdminNewOrder({
+        ...orderEmail,
+        referralName: referralName?.toString().trim() || undefined,
+        hasQr: true,
+      }),
+      notifyCustomerPaymentInstructions(orderEmail),
+    ])
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { runMigrations } from "@/lib/db/migrate"
 import { orderRepo, type OrderStatus } from "@/lib/db/order-repo"
 import { bytesToDataUri } from "@/lib/orders/blob"
+import { notifyCustomerRmbCompleted } from "@/lib/notify-customer-order"
 
 function isAuthorized(request: NextRequest): boolean {
   const secret = process.env.ADMIN_ORDERS_KEY?.trim()
@@ -97,10 +98,27 @@ export async function PATCH(request: NextRequest) {
 
   try {
     await runMigrations()
+    const existing = await orderRepo.getOrderById(id)
+    if (!existing) {
+      return NextResponse.json({ error: "Order not found or not updated" }, { status: 404 })
+    }
+
     const ok = await orderRepo.updateOrderStatus(id, status)
     if (!ok) {
       return NextResponse.json({ error: "Order not found or not updated" }, { status: 404 })
     }
+
+    if (status === "Completed" && existing.status !== "Completed") {
+      await notifyCustomerRmbCompleted({
+        referenceCode: existing.reference_code,
+        customerName: existing.customer_name,
+        email: existing.email_address,
+        mobileNumber: existing.mobile_number,
+        ghsAmount: existing.ghs_amount,
+        rmbAmount: existing.rmb_amount,
+      })
+    }
+
     return NextResponse.json({ success: true, id, status })
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error"

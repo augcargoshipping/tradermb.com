@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle, Copy, ArrowLeft, Smartphone, Clock, Users } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
 import { useSession } from "next-auth/react"
@@ -19,6 +19,7 @@ interface SubmissionData {
   ghsAmount: string
   rmbAmount: string
   referenceCode: string
+  recordId?: number
   submittedAt: string
   alipayQRData?: string
   alipayQRName?: string
@@ -34,14 +35,25 @@ export default function ConfirmationPage() {
   const [rate, setRate] = useState<number | null>(null)
   const [paymentNumber, setPaymentNumber] = useState<string | null>(null)
   const [paymentName, setPaymentName] = useState<string | null>(null)
+  const [momoConfirmed, setMomoConfirmed] = useState(false)
+  const [confirmingMomo, setConfirmingMomo] = useState(false)
+  const [momoError, setMomoError] = useState<string | null>(null)
   const { toast } = useToast();
-  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     // Get submission data from sessionStorage
     const storedData = sessionStorage.getItem("submissionData")
     if (storedData) {
-      setSubmissionData(JSON.parse(storedData))
+      const parsed = JSON.parse(storedData) as SubmissionData
+      setSubmissionData(parsed)
+      if (parsed.referenceCode) {
+        try {
+          const confirmed = sessionStorage.getItem(`momoConfirmed_${parsed.referenceCode}`)
+          if (confirmed === "1") setMomoConfirmed(true)
+        } catch {
+          /* ignore */
+        }
+      }
     } else {
       // Redirect to home if no data
       router.push("/")
@@ -63,6 +75,44 @@ export default function ConfirmationPage() {
     }
     loadPaymentDetails()
   }, [])
+
+  const handleMomoConfirmed = async (checked: boolean) => {
+    if (!checked || !submissionData?.recordId || momoConfirmed || confirmingMomo) return
+
+    setConfirmingMomo(true)
+    setMomoError(null)
+    try {
+      const res = await fetch("/api/orders/confirm-momo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recordId: submissionData.recordId,
+          referenceCode: submissionData.referenceCode,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        setMomoError(data.error || "Could not confirm payment. Try again.")
+        return
+      }
+      setMomoConfirmed(true)
+      try {
+        sessionStorage.setItem(`momoConfirmed_${submissionData.referenceCode}`, "1")
+      } catch {
+        /* ignore */
+      }
+      toast({
+        title: data.alreadyConfirmed ? "Already recorded" : "Payment noted",
+        description: data.alreadyConfirmed
+          ? "We already have your MoMo confirmation on file."
+          : "Thanks — our team has been notified to verify your payment.",
+      })
+    } catch {
+      setMomoError("Network error. Check your connection and try again.")
+    } finally {
+      setConfirmingMomo(false)
+    }
+  }
 
   const handleCopyReference = async () => {
     if (submissionData?.referenceCode) {
@@ -149,6 +199,7 @@ export default function ConfirmationPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2 sm:text-3xl">Order Submitted!</h1>
           <p className="text-sm text-gray-600 sm:text-base">Your RMB purchase request has been received</p>
+          <p className="mt-2 text-xs text-emerald-700 sm:text-sm">Payment instructions were also sent to your email.</p>
         </div>
 
         {/* Payment Instructions */}
@@ -186,6 +237,35 @@ export default function ConfirmationPage() {
                     <li>Keep your payment receipt</li>
                     <li><strong>⚠️ Pay from the same MoMo number you entered: {submissionData.mobileNumber}</strong></li>
                   </ul>
+                </div>
+
+                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="momo-sent"
+                      checked={momoConfirmed}
+                      disabled={momoConfirmed || confirmingMomo || !submissionData.recordId}
+                      onCheckedChange={(value) => void handleMomoConfirmed(value === true)}
+                      className="mt-0.5 h-5 w-5 border-emerald-600 data-[state=checked]:bg-emerald-600"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor="momo-sent" className="cursor-pointer text-sm font-semibold leading-snug text-emerald-900 sm:text-base">
+                        I have sent the mobile money payment
+                      </Label>
+                      <p className="mt-1 text-xs leading-relaxed text-emerald-800 sm:text-sm">
+                        Tick this after you pay. Our team at August Cargo Logistics will be notified to verify your payment.
+                      </p>
+                      {confirmingMomo && (
+                        <p className="mt-2 text-xs text-emerald-700">Notifying our team…</p>
+                      )}
+                      {momoConfirmed && (
+                        <p className="mt-2 text-xs font-medium text-emerald-700 sm:text-sm">
+                          ✓ Thanks — we&apos;ll verify your payment and send your RMB soon.
+                        </p>
+                      )}
+                      {momoError && <p className="mt-2 text-xs text-red-600">{momoError}</p>}
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -37,6 +37,7 @@ export interface OrderRecord {
   qr_image: Uint8Array | null
   qr_mime: string | null
   user_id: string | null
+  momo_confirmed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -60,6 +61,10 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     qr_image: blob,
     qr_mime: row.qr_mime != null && String(row.qr_mime).length > 0 ? String(row.qr_mime) : null,
     user_id: row.user_id ? String(row.user_id) : null,
+    momo_confirmed_at:
+      row.momo_confirmed_at != null && String(row.momo_confirmed_at).length > 0
+        ? String(row.momo_confirmed_at)
+        : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   }
@@ -110,6 +115,40 @@ export class OrderRepo {
     })
 
     return Number(result.lastInsertRowid)
+  }
+
+  async getOrderById(id: number): Promise<OrderRecord | null> {
+    const db = getDbClient()
+    const result = await db.execute({
+      sql: `SELECT * FROM orders WHERE id = ? LIMIT 1`,
+      args: [id],
+    })
+    if (!result.rows.length) return null
+    return mapOrder(result.rows[0] as Record<string, unknown>)
+  }
+
+  async confirmMomoPayment(id: number, referenceCode: string): Promise<{
+    newlyConfirmed: boolean
+    order: OrderRecord
+  } | null> {
+    const order = await this.getOrderById(id)
+    if (!order || order.reference_code !== referenceCode) return null
+
+    if (order.momo_confirmed_at) {
+      return { newlyConfirmed: false, order }
+    }
+
+    const db = getDbClient()
+    const now = new Date().toISOString()
+    await db.execute({
+      sql: `UPDATE orders SET momo_confirmed_at = ?, status = ?, updated_at = ? WHERE id = ?`,
+      args: [now, "Paid", now, id],
+    })
+
+    return {
+      newlyConfirmed: true,
+      order: { ...order, momo_confirmed_at: now, status: "Paid", updated_at: now },
+    }
   }
 
   async updateOrderStatus(id: number, status: OrderStatus): Promise<boolean> {

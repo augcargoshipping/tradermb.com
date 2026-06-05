@@ -36,6 +36,15 @@ async function ensureOrdersQrMimeColumn(): Promise<void> {
   }
 }
 
+async function ensureOrdersMomoConfirmedColumn(): Promise<void> {
+  const db = getDbClient()
+  try {
+    await db.execute("ALTER TABLE orders ADD COLUMN momo_confirmed_at TEXT")
+  } catch {
+    // duplicate column
+  }
+}
+
 async function seedDefaultPaymentSettings(): Promise<void> {
   const number = await settingsRepo.getSetting(MOMO_PAYMENT_NUMBER_KEY)
   if (!number) {
@@ -57,6 +66,7 @@ async function runMigrationsInternal(): Promise<void> {
   await ensureOrdersQrDataUriColumn()
   await ensureOrdersQrImageColumn()
   await ensureOrdersQrMimeColumn()
+  await ensureOrdersMomoConfirmedColumn()
   await seedDefaultPaymentSettings()
 }
 
