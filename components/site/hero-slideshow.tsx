@@ -13,10 +13,6 @@ import { cn } from "@/lib/utils"
 
 const HERO_SLIDES = [
   {
-    src: "/hero-exchange.png",
-    alt: "Secure Ghana Cedis to Chinese Yuan exchange",
-  },
-  {
     src: "/hero-slide-1.png",
     alt: "Exchange Ghana Cedis for Chinese Yuan",
   },
@@ -78,7 +74,7 @@ export function HeroSlideshow({ className }: { className?: string }) {
         <CarouselContent className="-ml-0">
           {HERO_SLIDES.map((slide, index) => (
             <CarouselItem key={slide.src} className="pl-0">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-white/40">
+              <div className="relative aspect-square w-full overflow-hidden rounded-2xl">
                 <Image
                   src={slide.src}
                   alt={slide.alt}
