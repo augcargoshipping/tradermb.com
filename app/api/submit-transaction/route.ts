@@ -30,6 +30,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!qrFile) {
+      return NextResponse.json(
+        { success: false, error: "Alipay QR code is required", details: "Upload your Alipay QR image to complete the order." },
+        { status: 400 }
+      )
+    }
+
     const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
     if (!emailRegex.test(email)) {
       return NextResponse.json({ success: false, error: "Invalid email format" }, { status: 400 })
@@ -75,14 +82,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let qrImage: Uint8Array | null = null
-    let qrMime: string | null = null
-    if (qrFile) {
-      const buf = Buffer.from(await qrFile.arrayBuffer())
-      qrMime =
-        qrFile.type && qrFile.type.startsWith("image/") ? qrFile.type : "image/png"
-      qrImage = new Uint8Array(buf)
+    if (!qrFile.type?.startsWith("image/")) {
+      return NextResponse.json(
+        { success: false, error: "Invalid QR image", details: "Upload a PNG or JPG image of your Alipay QR code." },
+        { status: 400 }
+      )
     }
+
+    const buf = Buffer.from(await qrFile.arrayBuffer())
+    const qrMime = qrFile.type
+    const qrImage = new Uint8Array(buf)
 
     await runMigrations()
 
@@ -106,7 +115,7 @@ export async function POST(request: NextRequest) {
       userId,
     })
 
-    void notifyAdminNewOrder({
+    await notifyAdminNewOrder({
       referenceCode,
       customerName: fullName.trim(),
       email: email.trim(),
@@ -114,7 +123,7 @@ export async function POST(request: NextRequest) {
       ghsAmount: ghsNum,
       rmbAmount: rmbNum,
       referralName: referralName?.toString().trim() || undefined,
-      hasQr: !!qrImage,
+      hasQr: true,
     })
 
     return NextResponse.json({

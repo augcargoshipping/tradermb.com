@@ -47,7 +47,9 @@ async function seedDefaultPaymentSettings(): Promise<void> {
   }
 }
 
-export async function runMigrations(): Promise<void> {
+let migratePromise: Promise<void> | null = null
+
+async function runMigrationsInternal(): Promise<void> {
   const db = getDbClient()
   for (const statement of schemaStatements) {
     await db.execute(statement)
@@ -56,4 +58,15 @@ export async function runMigrations(): Promise<void> {
   await ensureOrdersQrImageColumn()
   await ensureOrdersQrMimeColumn()
   await seedDefaultPaymentSettings()
+}
+
+/** Run schema migrations once per server process (avoids slow repeat Turso work on every rate fetch). */
+export async function runMigrations(): Promise<void> {
+  if (!migratePromise) {
+    migratePromise = runMigrationsInternal().catch((err) => {
+      migratePromise = null
+      throw err
+    })
+  }
+  return migratePromise
 }

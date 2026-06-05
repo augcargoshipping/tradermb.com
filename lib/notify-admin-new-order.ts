@@ -76,16 +76,13 @@ export async function notifyAdminNewOrder(order: NewOrderNotification): Promise<
     .join("\n")
 
   try {
-    const sent = await sendMail({
-      from: process.env.EMAIL_USER,
+    await sendMail({
       to,
       subject: `New order ${order.referenceCode} — ₵${order.ghsAmount} / ¥${order.rmbAmount}`,
       text,
       html,
     })
-    if (sent) {
-      console.log("notify-admin-new-order: sent to", to)
-    }
+    console.log("notify-admin-new-order: sent to", to)
   } catch (error) {
     console.error("notify-admin-new-order: failed:", error)
   }

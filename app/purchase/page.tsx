@@ -328,6 +328,11 @@ function PurchaseForm() {
     } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
       next.email = "That email does not look valid"
     }
+    if (!formData.alipayQR || formData.alipayQR.size === 0) {
+      next.alipayQR = "Upload your Alipay QR code to complete the order"
+    } else if (!formData.alipayQR.type.startsWith("image/")) {
+      next.alipayQR = "Upload a PNG or JPG image of your Alipay QR code"
+    }
 
     setErrors(next)
     return Object.keys(next).length === 0
@@ -366,7 +371,9 @@ function PurchaseForm() {
         (formData.currencyMode === "ghs-to-rmb"
           ? Number.parseFloat(formData.ghsAmount) > 0
           : Number.parseFloat(formData.rmbAmount) > 0)
+      const missingQr = !formData.alipayQR || formData.alipayQR.size === 0
       if (!step1Ok) setStep(1)
+      else if (missingQr) setStep(3)
       else setStep(2)
       setSubmitError("Please fix the highlighted fields, then try again.")
       return
@@ -387,9 +394,7 @@ function PurchaseForm() {
       }
       submitData.append("exchangeRate", rmbPerGhs != null ? String(rmbPerGhs) : "0")
       submitData.append("email", formData.email.trim())
-      if (formData.alipayQR && formData.alipayQR.size > 0) {
-        submitData.append("alipayQR", formData.alipayQR)
-      }
+      submitData.append("alipayQR", formData.alipayQR!)
 
       const response = await fetch("/api/submit-transaction", {
         method: "POST",
@@ -703,7 +708,7 @@ function PurchaseForm() {
             <div className="space-y-5 animate-in fade-in duration-200">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">Almost there</h2>
-                <p className="text-sm text-muted-foreground mt-1">Optional extras, then submit when everything looks right.</p>
+                <p className="text-sm text-muted-foreground mt-1">Upload your Alipay QR, then submit when everything looks right.</p>
               </div>
 
               {submitError && (
@@ -758,7 +763,9 @@ function PurchaseForm() {
               </Collapsible>
 
               <div className="space-y-2">
-                <Label className="font-semibold">Alipay QR (optional)</Label>
+                <Label className="font-semibold">
+                  Alipay QR code <span className="text-red-600">*</span>
+                </Label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -781,7 +788,7 @@ function PurchaseForm() {
                   }}
                   className={cn(
                     "w-full rounded-xl border-2 border-dashed py-8 px-4 text-center transition-colors hover:bg-emerald-50/50",
-                    qrPreview ? "border-emerald-300 bg-emerald-50/30" : "border-gray-200"
+                    errors.alipayQR ? "border-red-400 bg-red-50/30" : qrPreview ? "border-emerald-300 bg-emerald-50/30" : "border-gray-200"
                   )}
                 >
                   {qrPreview ? (
@@ -793,10 +800,11 @@ function PurchaseForm() {
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Upload className="h-8 w-8" />
                       <span className="text-sm">Drop or tap to attach your Alipay QR</span>
-                      <span className="text-xs">PNG or JPG — skip if you will send it later</span>
+                      <span className="text-xs">PNG or JPG — required to receive your RMB</span>
                     </div>
                   )}
                 </button>
+                {errors.alipayQR && <p className="text-sm text-red-600">{errors.alipayQR}</p>}
               </div>
 
               <div className="flex items-start gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-900">
@@ -808,7 +816,7 @@ function PurchaseForm() {
                 type="submit"
                 className="w-full h-12 text-base font-bold btn-primary rounded-xl"
                 size="lg"
-                disabled={isSubmitting || ratePending || loadingRate}
+                disabled={isSubmitting || ratePending || loadingRate || !qrPreview}
               >
                 {isSubmitting ? "Sending…" : "Submit order"}
               </Button>

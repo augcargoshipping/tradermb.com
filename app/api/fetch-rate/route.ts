@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { runMigrations } from "@/lib/db/migrate"
 import { resolveExchangeRate } from "@/lib/exchange-rate"
 
 export const dynamic = "force-dynamic"
@@ -9,7 +8,7 @@ const noStore = { "Cache-Control": "no-store, no-cache, must-revalidate" }
 
 export async function GET() {
   try {
-    await runMigrations()
+    // Migrations run on write paths; rate read should stay fast for the homepage strip.
     const state = await resolveExchangeRate()
 
     return NextResponse.json(
