@@ -25,6 +25,8 @@ import { HomePageFallback } from "@/components/site/home-fallback"
 import { HeroSlideshow } from "@/components/site/hero-slideshow"
 import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { RATE_ADMIN_TAP_COUNT, RATE_ADMIN_TAP_WINDOW_MS } from "@/lib/rate-admin-access"
+import { useSession } from "next-auth/react"
+import { supportWhatsAppUrlForUser } from "@/lib/whatsapp"
 
 const features = [
   {
@@ -71,6 +73,10 @@ const faqs = [
 function LandingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: session } = useSession()
+  const whatsappUrl = supportWhatsAppUrlForUser(session?.user)
+  const authHref = session?.user ? "/dashboard" : "/auth/signin"
+  const authLabel = session?.user ? "Dashboard" : "Sign in"
   const { rate: rmbPerGhs, loading, status, tradingEnabled, pendingMessage, applyRate } = useExchangeRate()
   const [referralName, setReferralName] = useState("")
   const [portalOpen, setPortalOpen] = useState(false)
@@ -81,6 +87,12 @@ function LandingContent() {
     const ref = searchParams.get("ref")
     if (ref) setReferralName(decodeURIComponent(ref))
   }, [searchParams])
+
+  useEffect(() => {
+    if (session?.user) {
+      router.prefetch("/dashboard")
+    }
+  }, [session?.user, router])
 
   const handleRateTap = () => {
     tapCount.current += 1
@@ -142,8 +154,8 @@ function LandingContent() {
                       Start your trade
                       <ArrowRight className="h-4 w-4" />
                     </Link>
-                    <Link href="/auth/signin" className="btn-outline-light">
-                      Sign in / Dashboard
+                    <Link href={authHref} className="btn-outline-light" prefetch>
+                      {authLabel}
                     </Link>
                   </div>
                   {loading ? (
@@ -281,11 +293,11 @@ function LandingContent() {
         </section>
 
         <a
-          href="https://wa.me/233270373565"
+          href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="fixed bottom-5 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg ring-4 ring-white/90 sm:bottom-8 sm:right-8"
-          aria-label="WhatsApp"
+          aria-label="WhatsApp support"
         >
           <MessageCircle className="h-7 w-7" />
         </a>

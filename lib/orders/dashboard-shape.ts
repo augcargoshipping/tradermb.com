@@ -1,4 +1,4 @@
-import type { OrderRecord } from "@/lib/db/order-repo"
+import type { DashboardOrderSummary, OrderRecord } from "@/lib/db/order-repo"
 import { bytesToDataUri } from "@/lib/orders/blob"
 
 /** Shape expected by `app/dashboard/page.tsx` (legacy Airtable-style `fields`). */
@@ -16,6 +16,29 @@ export type DashboardOrder = {
     Rate: string
     /** Data URI for customer Alipay QR when stored in Turso */
     QR_Image_Data_Uri: string | null
+  }
+}
+
+export function orderSummaryToDashboardOrder(o: DashboardOrderSummary): DashboardOrder {
+  const rate =
+    o.ghs_amount > 0
+      ? `1 GHS = ${(o.rmb_amount / o.ghs_amount).toFixed(2)} RMB`
+      : "N/A"
+
+  return {
+    id: o.id,
+    fields: {
+      Reference_Code: o.reference_code,
+      Submitted_At: o.submitted_at,
+      GHS_Amount: o.ghs_amount,
+      RMB_Amount: o.rmb_amount,
+      Status: o.status,
+      Customer_Name: o.customer_name,
+      Mobile_Number: o.mobile_number,
+      Referral_Name: o.referral_name ?? "",
+      Rate: rate,
+      QR_Image_Data_Uri: null,
+    },
   }
 }
 

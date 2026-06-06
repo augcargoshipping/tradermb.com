@@ -1,7 +1,7 @@
 "use client";
 import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Mail, User, Lock } from "lucide-react";
 
 export default function SignInPage() {
@@ -17,23 +17,34 @@ function SignInContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [formError, setFormError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const res = await signIn("credentials", {
-      identifier,
-      password,
-      redirect: false,
-    });
-    setLoading(false);
-    if (res?.ok) {
-      router.push("/dashboard");
-    } else if (res?.error) {
-      router.push(`/auth/signin?error=${encodeURIComponent(res.error)}`);
+    setFormError(null);
+    try {
+      const res = await signIn("credentials", {
+        identifier,
+        password,
+        redirect: false,
+      });
+      if (res?.ok) {
+        // Full page load picks up the session cookie reliably (client router can miss it)
+        window.location.assign("/dashboard");
+        return;
+      }
+      const message =
+        res?.error === "CredentialsSignin"
+          ? "Email or password incorrect"
+          : res?.error ?? "Sign in failed. Please try again.";
+      setFormError(message);
+    } catch {
+      setFormError("Sign in failed. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -89,9 +100,12 @@ function SignInContent() {
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
-          {error && (
+          {(formError || error) && (
             <div className="text-red-600 text-sm text-center bg-red-50 border border-red-200 rounded-lg p-3">
-              {error === "CredentialsSignin" ? "Email or password incorrect" : decodeURIComponent(error)}
+              {formError ??
+                (error === "CredentialsSignin"
+                  ? "Email or password incorrect"
+                  : decodeURIComponent(error))}
             </div>
           )}
         </form>

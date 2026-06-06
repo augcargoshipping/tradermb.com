@@ -10,10 +10,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
 import { useSession } from "next-auth/react"
-import { momoNumberToWhatsApp } from "@/lib/payment-settings"
+import { openSupportWhatsApp, type SupportWhatsAppContext } from "@/lib/whatsapp"
 
 interface SubmissionData {
   fullName: string
+  email?: string
   mobileNumber: string
   referralName: string
   ghsAmount: string
@@ -23,6 +24,17 @@ interface SubmissionData {
   submittedAt: string
   alipayQRData?: string
   alipayQRName?: string
+}
+
+function orderWhatsAppContext(data: SubmissionData): SupportWhatsAppContext {
+  return {
+    name: data.fullName,
+    email: data.email,
+    mobileNumber: data.mobileNumber,
+    referenceCode: data.referenceCode,
+    ghsAmount: data.ghsAmount,
+    rmbAmount: data.rmbAmount,
+  }
 }
 
 export default function ConfirmationPage() {
@@ -150,12 +162,15 @@ export default function ConfirmationPage() {
   };
 
   const handleWhatsApp = () => {
-    if (session) {
-      const userName = session.user?.name || session.user?.email || "User";
-      const referralLink = `${window.location.origin}/auth/signup?referrer=${encodeURIComponent(userName)}`;
-      const message = encodeURIComponent(`Hey! Check out TRADE RMB for fast and secure RMB trades. Use my link to sign up: ${referralLink}`);
-      window.open(`https://wa.me/?text=${message}`, "_blank");
-    }
+    if (!session) return;
+    const userName = session.user?.name || session.user?.email || "User";
+    const referralLink = `${window.location.origin}/auth/signup?referrer=${encodeURIComponent(userName)}`;
+    openSupportWhatsApp({
+      ...(submissionData ? orderWhatsAppContext(submissionData) : {}),
+      name: submissionData?.fullName || session.user?.name || undefined,
+      email: submissionData?.email || session.user?.email || undefined,
+      reason: `I'd like to refer a friend.\n\nReferral link: ${referralLink}`,
+    });
   };
 
   const handleSMS = () => {
@@ -276,13 +291,12 @@ export default function ConfirmationPage() {
                   You can visit our office to pay in person. Please bring a valid ID card and your reference code.
                 </p>
                 <Button
-                  onClick={() => {
-                    const message = encodeURIComponent(
-                      `Hello, I am a customer from TRADE RMB and I want to pay in person. My reference code is: ${submissionData.referenceCode}`
-                    );
-                    const whatsappUrl = `https://wa.me/${paymentNumber ? momoNumberToWhatsApp(paymentNumber) : "233594669717"}?text=${message}`;
-                    window.open(whatsappUrl, '_blank');
-                  }}
+                  onClick={() =>
+                    openSupportWhatsApp({
+                      ...orderWhatsAppContext(submissionData),
+                      reason: "I would like to pay in person. I will bring a valid ID and my reference code.",
+                    })
+                  }
                   className="mx-auto flex h-auto min-h-[44px] w-full max-w-full items-center justify-center whitespace-normal rounded-lg bg-red-700 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-red-800 sm:text-base"
                 >
                   <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
@@ -321,6 +335,12 @@ export default function ConfirmationPage() {
                     <span className="text-gray-600">Mobile Number</span>
                     <span className="font-medium">{submissionData.mobileNumber}</span>
                   </div>
+                  {submissionData.email && (
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-gray-600">Email</span>
+                      <span className="font-medium break-all text-right sm:max-w-[55%]">{submissionData.email}</span>
+                    </div>
+                  )}
                   {submissionData.referralName && (
                     <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-gray-600">Referred by</span>
@@ -407,12 +427,14 @@ export default function ConfirmationPage() {
         <div className="w-full px-1 pb-2 text-center text-sm text-gray-500">
           <p>Need help? Contact our support team</p>
           <Button
-            onClick={() => {
-              const userName = session?.user?.name || "a customer";
-              const message = encodeURIComponent(`Hello Trade RMB support! This is ${userName}.`)
-              const whatsappUrl = `https://wa.me/${paymentNumber ? momoNumberToWhatsApp(paymentNumber) : "233594669717"}?text=${message}`
-              window.open(whatsappUrl, '_blank')
-            }}
+            onClick={() =>
+              openSupportWhatsApp({
+                ...orderWhatsAppContext(submissionData),
+                name: submissionData.fullName || session?.user?.name || undefined,
+                email: submissionData.email || session?.user?.email || undefined,
+                reason: "I need help with my order.",
+              })
+            }
             className="mx-auto mt-2 flex h-11 w-full max-w-xs items-center justify-center rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700 sm:w-auto"
           >
             <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">

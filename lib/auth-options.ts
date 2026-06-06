@@ -3,6 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { airtableService } from "@/lib/airtable-service"
 
+/** Stay signed in until explicit sign-out; rolling refresh keeps active users logged in. */
+const SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
+const SESSION_UPDATE_AGE_SECONDS = 24 * 60 * 60
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -57,8 +61,11 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
-    updateAge: 24 * 60 * 60,
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    updateAge: SESSION_UPDATE_AGE_SECONDS,
+  },
+  jwt: {
+    maxAge: SESSION_MAX_AGE_SECONDS,
   },
   pages: {
     signIn: "/auth/signin",

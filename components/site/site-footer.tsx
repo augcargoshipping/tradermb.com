@@ -1,7 +1,13 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
+import { useSession } from "next-auth/react"
+import { supportWhatsAppUrlForUser } from "@/lib/whatsapp"
 
 export function SiteFooter() {
+  const { data: session } = useSession()
+  const whatsappUrl = supportWhatsAppUrlForUser(session?.user)
   return (
     <footer className="relative mt-auto overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-slate-300 safe-bottom">
       <div className="absolute inset-0 mesh-dots opacity-20" aria-hidden />
@@ -41,7 +47,7 @@ export function SiteFooter() {
             <ul className="mt-4 space-y-2.5 text-sm">
               <li>
                 <a
-                  href="https://wa.me/233270373565"
+                  href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="transition hover:text-white"

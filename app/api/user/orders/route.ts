@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { airtableService } from "@/lib/airtable-service"
 import { runMigrations } from "@/lib/db/migrate"
 import { orderRepo } from "@/lib/db/order-repo"
-import { orderRecordToDashboardOrder } from "@/lib/orders/dashboard-shape"
+import { orderSummaryToDashboardOrder } from "@/lib/orders/dashboard-shape"
 import { getAuthSession } from "@/lib/auth-server"
 
 export const dynamic = "force-dynamic"
@@ -20,16 +20,16 @@ export async function GET(request: NextRequest) {
     await runMigrations()
 
     const sessionUserId = session?.user?.userId ?? null
-    let rows = await orderRepo.getOrdersByUserIdentifiers({
+    let rows = await orderRepo.getOrdersByUserIdentifiersSummary({
       userId: sessionUserId,
       email,
     })
 
-    if (rows.length === 0) {
+    if (rows.length === 0 && airtableService.isConfigured()) {
       const users = await airtableService.getUsersByEmail(email)
       if (users.length > 0) {
         const user = users[0].fields as Record<string, string | undefined>
-        rows = await orderRepo.getOrdersByUserIdentifiers({
+        rows = await orderRepo.getOrdersByUserIdentifiersSummary({
           userId: user.User_ID || user.Username || sessionUserId,
           email: user.Email || email,
           mobileNumber: user.Phone || null,
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const orders = rows.map(orderRecordToDashboardOrder)
+    const orders = rows.map(orderSummaryToDashboardOrder)
     return NextResponse.json({ orders })
   } catch (error) {
     console.error("user/orders:", error)

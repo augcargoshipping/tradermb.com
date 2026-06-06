@@ -72,7 +72,7 @@ export function SiteHeader({ onBuy, className }: SiteHeaderProps) {
 
         <div className="hidden items-center gap-2 md:flex">
           <Button variant="ghost" size="sm" asChild className="min-h-[40px]">
-            <Link href={authHref}>
+            <Link href={authHref} prefetch>
               <User className="mr-1.5 h-4 w-4" />
               {authLabel}
             </Link>
@@ -102,7 +102,7 @@ export function SiteHeader({ onBuy, className }: SiteHeaderProps) {
         <div className="border-t border-border bg-white px-4 pb-4 pt-3 sm:hidden">
           <div className="flex flex-col gap-2">
             <Button variant="outline" asChild className="min-h-[44px] w-full justify-center">
-              <Link href={authHref} onClick={() => setOpen(false)}>
+              <Link href={authHref} prefetch onClick={() => setOpen(false)}>
                 <User className="mr-2 h-4 w-4" />
                 {authLabel}
               </Link>

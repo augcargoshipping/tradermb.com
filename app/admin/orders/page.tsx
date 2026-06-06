@@ -2,9 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RefreshCw, QrCode, Banknote, XCircle, RotateCcw } from "lucide-react"
+import { RefreshCw, QrCode, Banknote, XCircle, RotateCcw, ZoomIn } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type OrderRow = {
@@ -32,6 +39,7 @@ export default function AdminOrdersPage() {
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [qrByOrderId, setQrByOrderId] = useState<Record<number, string>>({})
   const [loadingQrId, setLoadingQrId] = useState<number | null>(null)
+  const [expandedQr, setExpandedQr] = useState<{ src: string; reference: string } | null>(null)
 
   const load = useCallback(async (adminKey: string) => {
     const trimmedKey = adminKey.trim()
@@ -296,14 +304,32 @@ export default function AdminOrdersPage() {
                       {o.has_qr ? (
                         <div className="flex flex-col items-center gap-3">
                           {qrByOrderId[o.id] ? (
-                            <div className="rounded-xl bg-white p-2 shadow-inner">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={qrByOrderId[o.id]}
-                                alt="Customer Alipay QR"
-                                className="h-44 w-44 object-contain"
-                              />
-                            </div>
+                            <button
+                              type="button"
+                              className="group flex flex-col items-center gap-2 rounded-xl transition focus:outline-none"
+                              onClick={() =>
+                                setExpandedQr({
+                                  src: qrByOrderId[o.id],
+                                  reference: o.reference_code,
+                                })
+                              }
+                              aria-label={`View full-size Alipay QR for ${o.reference_code}`}
+                            >
+                              <div className="relative rounded-xl bg-white p-2 shadow-inner ring-offset-slate-900 transition group-hover:ring-2 group-hover:ring-emerald-400/80 group-focus-visible:ring-2 group-focus-visible:ring-emerald-400">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={qrByOrderId[o.id]}
+                                  alt="Customer Alipay QR"
+                                  className="h-44 w-44 object-contain"
+                                />
+                                <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-black/0 transition group-hover:bg-black/25">
+                                  <ZoomIn className="h-8 w-8 text-white opacity-0 transition group-hover:opacity-100" />
+                                </span>
+                              </div>
+                              <span className="text-xs text-slate-400 group-hover:text-emerald-300">
+                                Tap to enlarge
+                              </span>
+                            </button>
                           ) : (
                             <Button
                               type="button"
@@ -333,6 +359,27 @@ export default function AdminOrdersPage() {
           </>
         )}
       </div>
+
+      <Dialog open={expandedQr !== null} onOpenChange={(open) => !open && setExpandedQr(null)}>
+        <DialogContent className="max-w-[min(92vw,28rem)] border-slate-700 bg-slate-900 p-4 text-slate-100 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Alipay QR</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {expandedQr ? `Reference ${expandedQr.reference}` : "Customer QR code"}
+            </DialogDescription>
+          </DialogHeader>
+          {expandedQr && (
+            <div className="rounded-xl bg-white p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={expandedQr.src}
+                alt={`Alipay QR for ${expandedQr.reference}`}
+                className="mx-auto max-h-[70vh] w-full max-w-full object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

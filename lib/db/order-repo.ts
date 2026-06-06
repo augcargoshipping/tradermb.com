@@ -205,6 +205,62 @@ export class OrderRepo {
     return result.rows.map((row) => mapOrder(row as Record<string, unknown>))
   }
 
+  /** Dashboard list — omits QR blobs and large inline QR data. */
+  async getOrdersByUserIdentifiersSummary(identifiers: {
+    userId?: string | null
+    email?: string | null
+    mobileNumber?: string | null
+    fullName?: string | null
+  }): Promise<DashboardOrderSummary[]> {
+    const db = getDbClient()
+    const clauses: string[] = []
+    const args: Array<string> = []
+
+    if (identifiers.userId) {
+      clauses.push("user_id = ?")
+      args.push(identifiers.userId)
+    }
+    if (identifiers.email) {
+      clauses.push("email_address = ?")
+      args.push(identifiers.email)
+    }
+    if (identifiers.mobileNumber) {
+      clauses.push("mobile_number = ?")
+      args.push(identifiers.mobileNumber)
+    }
+    if (identifiers.fullName) {
+      clauses.push("customer_name = ?")
+      args.push(identifiers.fullName)
+    }
+
+    if (clauses.length === 0) {
+      return []
+    }
+
+    const result = await db.execute({
+      sql: `SELECT id, customer_name, email_address, mobile_number, referral_name,
+                   ghs_amount, rmb_amount, reference_code, status, submitted_at
+            FROM orders WHERE ${clauses.join(" OR ")} ORDER BY submitted_at DESC`,
+      args,
+    })
+
+    return result.rows.map((row) => {
+      const r = row as Record<string, unknown>
+      return {
+        id: Number(r.id),
+        customer_name: String(r.customer_name),
+        email_address: String(r.email_address),
+        mobile_number: String(r.mobile_number),
+        referral_name: r.referral_name ? String(r.referral_name) : null,
+        ghs_amount: Number(r.ghs_amount),
+        rmb_amount: Number(r.rmb_amount),
+        reference_code: String(r.reference_code),
+        status: String(r.status) as OrderStatus,
+        submitted_at: String(r.submitted_at),
+      }
+    })
+  }
+
   async listRecentOrders(limit: number): Promise<OrderRecord[]> {
     const db = getDbClient()
     const result = await db.execute({
@@ -258,6 +314,19 @@ export class OrderRepo {
     if (order.qr_url) return order.qr_url
     return null
   }
+}
+
+export interface DashboardOrderSummary {
+  id: number
+  customer_name: string
+  email_address: string
+  mobile_number: string
+  referral_name: string | null
+  ghs_amount: number
+  rmb_amount: number
+  reference_code: string
+  status: OrderStatus
+  submitted_at: string
 }
 
 export interface AdminOrderSummary {

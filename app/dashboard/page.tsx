@@ -1,13 +1,136 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import GreetingBanner from "../components/GreetingBanner";
-import { BarChart2, CheckCircle, ListOrdered, DollarSign, Share2, MessageCircle, Users } from "lucide-react";
+import {
+  BarChart2,
+  CheckCircle,
+  ListOrdered,
+  DollarSign,
+  Share2,
+  MessageCircle,
+  Users,
+  LogOut,
+  Settings,
+  ArrowRight,
+} from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 import OrderInvoiceModal from "../../components/invoice/order-invoice-modal";
+import { openSupportWhatsApp } from "@/lib/whatsapp";
+import { cn } from "@/lib/utils";
+import { SiteHeader } from "@/components/site/site-header";
+import { SiteFooter } from "@/components/site/site-footer";
 
 export const dynamic = "force-dynamic";
+
+type DashboardOrder = {
+  id?: number;
+  fields: {
+    Reference_Code: string;
+    Submitted_At?: string;
+    GHS_Amount: number | string;
+    RMB_Amount: number | string;
+    Status: string;
+    Customer_Name?: string;
+    Mobile_Number?: string;
+    Referral_Name?: string;
+  };
+};
+
+function orderStatusStyles(status: string) {
+  switch (status) {
+    case "Completed":
+      return "bg-emerald-50 text-emerald-700 ring-emerald-600/15";
+    case "Paid":
+      return "bg-blue-50 text-blue-700 ring-blue-600/15";
+    case "Cancelled":
+      return "bg-red-50 text-red-700 ring-red-600/15";
+    default:
+      return "bg-amber-50 text-amber-700 ring-amber-600/15";
+  }
+}
+
+function formatOrderDate(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? value
+    : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function OrderStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset sm:text-[11px]",
+        orderStatusStyles(status),
+      )}
+    >
+      {status}
+    </span>
+  );
+}
+
+function OrderAmounts({
+  ghs,
+  rmb,
+  className,
+}: {
+  ghs: number | string;
+  rmb: number | string;
+  className?: string;
+}) {
+  return (
+    <span className={cn("whitespace-nowrap tabular-nums text-xs text-slate-600", className)}>
+      ₵{ghs}
+      <span className="mx-1 text-slate-300">→</span>¥{rmb}
+    </span>
+  );
+}
+
+function OrderActions({
+  onInvoice,
+  onPayment,
+  compact,
+}: {
+  onInvoice: () => void;
+  onPayment: () => void;
+  compact?: boolean;
+}) {
+  const btn =
+    "font-medium text-emerald-700 transition hover:text-emerald-900 hover:underline underline-offset-2";
+  const outline =
+    "font-medium text-slate-600 transition hover:text-slate-900 hover:underline underline-offset-2";
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3 text-[11px]">
+        <button type="button" className={outline} onClick={onInvoice}>
+          Invoice
+        </button>
+        <button type="button" className={btn} onClick={onPayment}>
+          Payment
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-2 text-xs">
+      <button type="button" className={outline} onClick={onInvoice}>
+        Invoice
+      </button>
+      <span className="text-slate-200" aria-hidden>
+        |
+      </span>
+      <button type="button" className={btn} onClick={onPayment}>
+        Payment
+      </button>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -36,24 +159,31 @@ export default function Dashboard() {
 
   const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/signup?referrer=${encodeURIComponent(session && session.user ? session.user.name : "")}`;
 
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/user/orders", { credentials: "include" });
+      const data = await res.json();
+      if (res.ok) {
+        setOrders(data.orders || []);
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
+    if (status === "loading") return;
     if (status === "unauthenticated") {
       router.replace("/auth/signin");
       return;
     }
-    if (session?.user?.email) {
-      fetch(`/api/user/orders?email=${encodeURIComponent(session.user.email)}`, { credentials: "include" })
-        .then(res => res.json())
-        .then(data => {
-          setOrders(data.orders || []);
-          setLoading(false);
-        })
-        .catch(error => {
-          console.error("Error fetching orders:", error);
-          setLoading(false);
-        });
+    if (session?.user) {
+      void loadOrders();
     }
-  }, [session, status]);
+  }, [session?.user, status, router, loadOrders]);
 
   useEffect(() => {
     if (session && session.user) {
@@ -77,8 +207,11 @@ export default function Dashboard() {
   };
 
   const handleWhatsApp = () => {
-    const message = encodeURIComponent(`Hey! Check out TRADE RMB for fast and secure RMB trades. Use my link to sign up: ${referralLink}`);
-    window.open(`https://wa.me/?text=${message}`, "_blank");
+    openSupportWhatsApp({
+      name: session?.user?.name || undefined,
+      email: session?.user?.email || undefined,
+      reason: `I'd like to refer a friend.\n\nReferral link: ${referralLink}`,
+    });
   };
 
   const handleSMS = () => {
@@ -92,177 +225,254 @@ export default function Dashboard() {
     window.open(`mailto:?subject=${subject}&body=${body}`);
   };
 
-  if (status === "loading") {
-    return <div className="page-shell hero-gradient flex items-center justify-center text-emerald-800">Loading...</div>;
-  }
+  const openPaymentDetails = (order: DashboardOrder) => {
+    const orderData = {
+      fullName: order.fields.Customer_Name,
+      mobileNumber: order.fields.Mobile_Number,
+      referralName: order.fields.Referral_Name || "",
+      ghsAmount: order.fields.GHS_Amount.toString(),
+      rmbAmount: order.fields.RMB_Amount.toString(),
+      referenceCode: order.fields.Reference_Code,
+      submittedAt: order.fields.Submitted_At,
+      status: order.fields.Status,
+    };
+    sessionStorage.setItem("submissionData", JSON.stringify(orderData));
+    router.push("/confirmation");
+  };
 
-  if (!session || !session.user) {
-    // Optionally, redirect or show nothing (shouldn't happen due to your redirect logic)
+  const sessionReady = !!session?.user;
+  const displayName = session?.user?.name || "";
+  const displayEmail = session?.user?.email || "";
+
+  const statCards = [
+    { label: "Total GHS", value: `₵${totalGHS.toLocaleString()}`, icon: DollarSign, tone: "text-amber-600 bg-amber-50" },
+    { label: "Total RMB", value: `¥${totalRMB.toLocaleString()}`, icon: BarChart2, tone: "text-emerald-600 bg-emerald-50" },
+    { label: "Orders", value: String(totalOrders), icon: ListOrdered, tone: "text-slate-600 bg-slate-100" },
+    { label: "Completed", value: String(completedOrders), icon: CheckCircle, tone: "text-emerald-600 bg-emerald-50" },
+    { label: "Referrals", value: String(referralCount), icon: Users, tone: "text-orange-600 bg-orange-50" },
+  ];
+
+  if (status === "unauthenticated") {
     return null;
   }
 
   return (
-    <div className="page-shell hero-gradient py-6 px-3 sm:py-8 sm:px-4 flex flex-col items-center safe-bottom">
-      {/* Header */}
-      <header className="w-full max-w-3xl flex items-center justify-between py-4 sm:py-8">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <img src="/logo-nav.png?v=3" alt="TRADE RMB Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-          <span className="text-lg sm:text-2xl font-extrabold text-emerald-900 tracking-tight">TRADE RMB</span>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-4">
-          <button onClick={() => router.push("/")} className="px-2 sm:px-4 py-1 sm:py-2 rounded-lg border border-emerald-200 bg-white/90 text-emerald-900 font-semibold shadow-sm transition text-xs sm:text-sm hover:bg-white">Home</button>
-          <button onClick={handleSignOut} className="px-2 sm:px-4 py-1 sm:py-2 rounded-lg bg-emerald-600 text-white font-semibold shadow hover:bg-emerald-700 transition text-xs sm:text-sm">Sign Out</button>
-        </div>
-      </header>
-      <div className="w-full max-w-3xl flex-1">
-        <GreetingBanner fullName={session && session.user ? session.user.name : ""} email={session.user.email} />
-        {/* Analytics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="flex items-center gap-3 bg-white rounded-2xl shadow p-4">
-            <DollarSign className="w-8 h-8 text-yellow-400" />
-            <div>
-              <div className="text-lg font-bold text-gray-900">₵{totalGHS.toLocaleString()}</div>
-              <div className="text-xs text-gray-500">Total Amount (GHS)</div>
-            </div>
+    <div className="flex min-h-[100dvh] flex-col bg-slate-50">
+      <SiteHeader onBuy={() => router.push("/purchase")} />
+
+      <main className="container-tight section-pad flex-1 py-6 sm:py-8">
+        <div className="mx-auto max-w-5xl">
+        {sessionReady ? (
+          <GreetingBanner
+            fullName={displayName}
+            email={displayEmail}
+            action={
+              <button
+                type="button"
+                onClick={() => void handleSignOut()}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
+            }
+          />
+        ) : (
+          <div className="mb-6 animate-pulse rounded-xl border border-slate-200 bg-white p-6">
+            <div className="h-4 w-20 rounded bg-slate-100" />
+            <div className="mt-3 h-7 w-40 rounded bg-slate-200" />
+            <div className="mt-2 h-4 w-52 rounded bg-slate-100" />
           </div>
-          <div className="flex items-center gap-3 bg-white rounded-2xl shadow p-4">
-            <BarChart2 className="w-8 h-8 text-emerald-600" />
-            <div>
-              <div className="text-lg font-bold text-gray-900">¥{totalRMB.toLocaleString()}</div>
-              <div className="text-xs text-gray-500">Total Amount (RMB)</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 bg-white rounded-2xl shadow p-4">
-            <ListOrdered className="w-8 h-8 text-amber-500" />
-            <div>
-              <div className="text-lg font-bold text-gray-900">{totalOrders}</div>
-              <div className="text-xs text-gray-500">Total Orders</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 bg-white rounded-2xl shadow p-4">
-            <CheckCircle className="w-8 h-8 text-green-500" />
-            <div>
-              <div className="text-lg font-bold text-gray-900">{completedOrders}</div>
-              <div className="text-xs text-gray-500">Completed Orders</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 bg-white rounded-2xl shadow p-4">
-            <Users className="w-8 h-8 text-orange-500" />
-            <div>
-              <div className="text-lg font-bold text-gray-900">{referralCount}</div>
-              <div className="text-xs text-gray-500">Referrals</div>
-            </div>
-          </div>
-        </div>
-        {/* Buy RMB & Edit Account Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <button
-            className="bg-yellow-300 hover:bg-yellow-400 text-gray-900 font-bold px-8 py-3 rounded-xl shadow transition-all text-lg"
-            onClick={() => router.push("/purchase")}
-          >
-            Buy RMB
-          </button>
-          <button
-            className="bg-white border border-gray-200 text-gray-900 font-bold px-8 py-3 rounded-xl shadow transition-all text-lg hover:bg-gray-50"
-            onClick={() => setShowEdit(true)}
-          >
-            Edit Account
-          </button>
-        </div>
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-900">My Orders</h2>
+        )}
+
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
           {loading ? (
-            <div>Loading orders...</div>
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-xl border border-slate-200 bg-white p-4">
+                <div className="h-3 w-16 rounded bg-slate-100" />
+                <div className="mt-3 h-6 w-20 rounded bg-slate-200" />
+              </div>
+            ))
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-base">
-                <thead>
-                  <tr className="text-gray-700 border-b">
-                    <th className="px-4 py-2 text-left">Order Ref</th>
-                    <th className="px-4 py-2 text-left">Date</th>
-                    <th className="px-4 py-2 text-left">Amount (GHS)</th>
-                    <th className="px-4 py-2 text-left">Amount (RMB)</th>
-                    <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-left">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.length === 0 ? (
-                    <tr><td colSpan={6} className="text-center py-4">No orders found.</td></tr>
-                  ) : (
-                    orders.map((order: any) => (
-                      <tr key={order.id ?? order.fields.Reference_Code} className="border-b hover:bg-emerald-50/50 transition-colors">
-                        <td className="px-4 py-2 font-mono">{order.fields.Reference_Code}</td>
-                        <td className="px-4 py-2">{order.fields.Submitted_At ? new Date(order.fields.Submitted_At).toLocaleDateString() : ""}</td>
-                        <td className="px-4 py-2">₵{order.fields.GHS_Amount}</td>
-                        <td className="px-4 py-2">¥{order.fields.RMB_Amount}</td>
-                        <td className="px-4 py-2 font-bold">
-                          {order.fields.Status === "Completed" ? (
-                            <span className="text-green-600">Completed</span>
-                          ) : order.fields.Status === "Paid" ? (
-                            <span className="text-blue-600">Paid</span>
-                          ) : order.fields.Status === "Cancelled" ? (
-                            <span className="text-red-600">Cancelled</span>
-                          ) : (
-                            <span className="text-yellow-600">Pending</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2">
-                          <div className="flex gap-2">
-                            <button
-                              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl shadow transition-all text-sm"
-                              onClick={() => setSelectedOrder(order)}
-                            >
-                              View Invoice
-                            </button>
-                            <button
-                              className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-xl shadow transition-all text-sm"
-                              onClick={() => {
-                                // Store order data in sessionStorage and redirect to confirmation page
-                                const orderData = {
-                                  fullName: order.fields.Customer_Name,
-                                  mobileNumber: order.fields.Mobile_Number,
-                                  referralName: order.fields.Referral_Name || "",
-                                  ghsAmount: order.fields.GHS_Amount.toString(),
-                                  rmbAmount: order.fields.RMB_Amount.toString(),
-                                  referenceCode: order.fields.Reference_Code,
-                                  submittedAt: order.fields.Submitted_At,
-                                  status: order.fields.Status
-                                };
-                                sessionStorage.setItem("submissionData", JSON.stringify(orderData));
-                                router.push("/confirmation");
-                              }}
-                            >
-                              Payment Details
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            statCards.map(({ label, value, icon: Icon, tone }) => (
+              <div
+                key={label}
+                className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-slate-500">{label}</p>
+                  <span className={cn("rounded-lg p-1.5", tone)}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <p className="mt-2 text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
+                  {value}
+                </p>
+              </div>
+            ))
           )}
         </div>
-        {/* Refer a Friend & WhatsApp Buttons (moved below main content) */}
-        <div className="flex gap-4 mb-8 justify-center">
-          <button onClick={handleRefer} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold shadow hover:bg-emerald-700 transition-transform">
-            <Share2 className="w-5 h-5" /> Refer a Friend
+
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+          <Link href="/purchase" prefetch className="btn-primary justify-center text-sm sm:min-w-[160px]">
+            Buy RMB
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <button
+            type="button"
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            onClick={() => setShowEdit(true)}
+          >
+            <Settings className="h-4 w-4" />
+            Account settings
           </button>
         </div>
-        {/* Refer a Friend Modal */}
-        {showReferModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full border border-blue-200 relative flex flex-col items-center">
-              <h3 className="text-xl font-bold mb-4 text-blue-800">Share Your Referral Link</h3>
-              <div className="flex flex-col gap-3 w-full">
-                <button onClick={handleWhatsApp} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2"><MessageCircle className="w-5 h-5" /> WhatsApp</button>
-                <button onClick={handleSMS} className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 10.5V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2v-4.5M21 10.5l-9 6.5-9-6.5"/></svg> SMS</button>
-                <button onClick={handleEmail} className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2 rounded-xl flex items-center justify-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 12H8m8 0a4 4 0 11-8 0 4 4 0 018 0zm8 0a8 8 0 11-16 0 8 8 0 0116 0z"/></svg> Email</button>
-                <button onClick={handleCopyLink} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-bold py-2 rounded-xl flex items-center justify-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 9h6v6H9z"/></svg> Copy Link</button>
+        <div className="mb-8 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4">
+            <h2 className="text-sm font-semibold text-slate-900">My Orders</h2>
+            {!loading && orders.length > 0 && (
+              <span className="text-xs text-slate-500">{orders.length} total</span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="divide-y divide-slate-100">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex animate-pulse items-center gap-3 px-3 py-2.5 sm:px-4">
+                  <div className="h-3.5 flex-1 max-w-[100px] rounded bg-slate-100" />
+                  <div className="hidden h-3 w-16 rounded bg-slate-50 sm:block" />
+                  <div className="h-3 w-20 rounded bg-slate-100" />
+                  <div className="h-5 w-14 rounded-full bg-slate-100" />
+                </div>
+              ))}
+            </div>
+          ) : orders.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-slate-500">
+              No orders yet.{" "}
+              <Link href="/purchase" className="font-medium text-emerald-700 hover:underline">
+                Start a trade
+              </Link>
+            </p>
+          ) : (
+            <>
+              {/* Mobile: dense rows */}
+              <ul className="divide-y divide-slate-100 md:hidden">
+                {(orders as DashboardOrder[]).map((order) => (
+                  <li
+                    key={order.id ?? order.fields.Reference_Code}
+                    className="px-3 py-2.5 active:bg-slate-50/80"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="min-w-0 truncate font-mono text-xs font-semibold text-slate-900">
+                        {order.fields.Reference_Code}
+                      </p>
+                      <OrderStatusBadge status={order.fields.Status} />
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                      <p className="text-[11px] text-slate-500">
+                        {formatOrderDate(order.fields.Submitted_At)}
+                      </p>
+                      <OrderAmounts
+                        ghs={order.fields.GHS_Amount}
+                        rmb={order.fields.RMB_Amount}
+                      />
+                    </div>
+                    <div className="mt-1.5">
+                      <OrderActions
+                        compact
+                        onInvoice={() => setSelectedOrder(order)}
+                        onPayment={() => openPaymentDetails(order)}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Desktop: tight table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-3 py-2 pl-4">Reference</th>
+                      <th className="px-2 py-2">Date</th>
+                      <th className="px-2 py-2">Amount</th>
+                      <th className="px-2 py-2">Status</th>
+                      <th className="px-3 py-2 pr-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(orders as DashboardOrder[]).map((order) => (
+                      <tr
+                        key={order.id ?? order.fields.Reference_Code}
+                        className="transition-colors hover:bg-slate-50/70"
+                      >
+                        <td className="whitespace-nowrap py-2 pl-4 pr-2 font-mono text-xs font-medium text-slate-900">
+                          {order.fields.Reference_Code}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 text-slate-500">
+                          {formatOrderDate(order.fields.Submitted_At)}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2">
+                          <OrderAmounts
+                            ghs={order.fields.GHS_Amount}
+                            rmb={order.fields.RMB_Amount}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <OrderStatusBadge status={order.fields.Status} />
+                        </td>
+                        <td className="py-2 pr-4 pl-2">
+                          <OrderActions
+                            onInvoice={() => setSelectedOrder(order)}
+                            onPayment={() => openPaymentDetails(order)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowReferModal(false)}>&times;</button>
+            </>
+          )}
+        </div>
+        <div className="mb-8 flex justify-center">
+          <button
+            type="button"
+            onClick={handleRefer}
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+          >
+            <Share2 className="h-4 w-4" />
+            Refer a friend
+          </button>
+        </div>
+
+        {showReferModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+              <button
+                type="button"
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                onClick={() => setShowReferModal(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              <h3 className="pr-6 text-lg font-semibold text-slate-900">Share your referral link</h3>
+              <p className="mt-1 text-sm text-slate-500">Invite friends to Trade RMB</p>
+              <div className="mt-4 flex flex-col gap-2">
+                <button type="button" onClick={handleWhatsApp} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white hover:bg-emerald-700">
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </button>
+                <button type="button" onClick={handleSMS} className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  SMS
+                </button>
+                <button type="button" onClick={handleEmail} className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Email
+                </button>
+                <button type="button" onClick={handleCopyLink} className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Copy link
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -272,9 +482,10 @@ export default function Dashboard() {
         />
         {/* Edit Account Modal */}
         {showEdit && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full border border-blue-200">
-              <h3 className="text-lg font-bold mb-4 text-blue-800">Edit Account</h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-slate-900">Account settings</h3>
+              <p className="mt-1 text-sm text-slate-500">Update your profile details</p>
               <form className="flex flex-col gap-4" onSubmit={async (e) => {
                 e.preventDefault();
                 setEditLoading(true);
@@ -298,16 +509,16 @@ export default function Dashboard() {
                 }
                 setEditLoading(false);
               }}>
-                <input type="text" placeholder="Name" className="border rounded px-3 py-2" value={editName} onChange={e => setEditName(e.target.value)} />
-                <input type="email" placeholder="Email" className="border rounded px-3 py-2" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
-                <div className="flex gap-4 mt-2">
-                  <button type="button" className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-2 rounded-xl hover:bg-gray-50" onClick={() => setShowEdit(false)} disabled={editLoading}>Cancel</button>
-                  <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl" disabled={editLoading}>{editLoading ? "Saving..." : "Save"}</button>
+                <input type="text" placeholder="Name" className="mt-4 rounded-lg border border-slate-200 px-3 py-2.5 text-sm" value={editName} onChange={e => setEditName(e.target.value)} />
+                <input type="email" placeholder="Email" className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
+                <div className="mt-2 flex gap-3">
+                  <button type="button" className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowEdit(false)} disabled={editLoading}>Cancel</button>
+                  <button type="submit" className="flex-1 rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white hover:bg-emerald-700" disabled={editLoading}>{editLoading ? "Saving…" : "Save"}</button>
                 </div>
               </form>
-              <hr className="my-4" />
+              <hr className="my-5 border-slate-100" />
               <button
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-xl mt-2"
+                className="w-full rounded-lg border border-red-200 bg-red-50 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100"
                 disabled={deleteLoading}
                 onClick={async () => {
                   if (!window.confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
@@ -332,11 +543,10 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-      </div>
-      {/* Footer */}
-      <footer className="w-full max-w-3xl mt-12 py-6 text-center text-sm text-gray-200 border-t border-white/20">
-        &copy; {new Date().getFullYear()} TRADE RMB. All rights reserved.
-      </footer>
+        </div>
+      </main>
+
+      <SiteFooter />
     </div>
   );
 } 

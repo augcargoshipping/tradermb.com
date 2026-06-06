@@ -201,19 +201,18 @@ export class AirtableService {
 
   async getUserByEmailOrUsername(identifier: string): Promise<any | null> {
     try {
-      // Try email first
-      const emailUsers = await this.getUsersByEmail(identifier)
-      if (emailUsers.length > 0) {
-        return emailUsers[0]
-      }
+      const trimmed = identifier.trim()
+      if (!trimmed) return null
 
-      // Try username
-      const usernameUsers = await this.getUsersByUsername(identifier)
-      if (usernameUsers.length > 0) {
-        return usernameUsers[0]
-      }
-
-      return null
+      const emailSafe = escapeAirtableString(trimmed.toLowerCase())
+      const usernameSafe = escapeAirtableString(trimmed)
+      const formula = `OR(LOWER({Email})='${emailSafe}',{Username}='${usernameSafe}')`
+      const response = await fetch(
+        `${this.usersBaseUrl}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`,
+        { headers: this.getHeaders() },
+      )
+      const data = await this.handleAirtableResponse(response)
+      return data.records?.[0] ?? null
     } catch (error) {
       console.error("Error fetching user:", error)
       return null
