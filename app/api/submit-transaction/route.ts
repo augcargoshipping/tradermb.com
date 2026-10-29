@@ -73,6 +73,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const minError = minGhsError(ghsNum)
+    if (minError) {
+      return NextResponse.json(
+        { success: false, error: "Amount too low", details: minError },
+        { status: 400 }
+      )
+    }
+
+    const appliedRate = rateForGhsAmount(ghsNum, rateState)
+    if (Math.abs(rateValue - appliedRate) > 0.0001) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Exchange rate changed",
+          details: `This trade uses ${ghsNum >= STANDARD_TIER_MIN_GHS ? "the ₵1,000+" : "the under-₵1,000"} rate. Refresh and try again.`,
+        },
+        { status: 409 }
+      )
+    }
+
+    const expectedRmb = ghsNum * appliedRate
+    if (Math.abs(rmbNum - expectedRmb) > 0.05) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Amount mismatch",
+          details: "Refresh the page so GHS and RMB match today’s rate for this trade size.",
+        },
+        { status: 409 }
+      )
+    }
+
     if (!qrFile.type?.startsWith("image/")) {
       return NextResponse.json(
         { success: false, error: "Invalid QR image", details: "Upload a PNG or JPG image of your Alipay QR code." },
@@ -87,7 +119,7 @@ export async function POST(request: NextRequest) {
     await runMigrations()
 
     let referenceCode = generateReferenceCode()
-          details: `This trade uses ${ghsNum >= STANDARD_TIER_MIN_GHS ? "the ₵1,000+" : "the under-₵1,000"} rate. Refresh and try again.`,
+    for (let attempt = 0; attempt < 10; attempt++) {
       if (!(await orderRepo.referenceCodeExists(referenceCode))) break
       referenceCode = generateReferenceCode()
     }

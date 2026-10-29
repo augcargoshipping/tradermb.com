@@ -155,6 +155,14 @@ function PurchaseForm() {
     rmbPerGhs && rmbPerGhs > 0
       ? { standard: rmbPerGhs, small: smallRate && smallRate > 0 ? smallRate : rmbPerGhs }
       : null
+  const [currentTestimonial, setCurrentTestimonial] = useState(0)
+  const hasPrefilledReferral = useRef(false)
+  const hasPrefilledUser = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const ref = searchParams?.get("ref")
+    if (ref && !hasPrefilledReferral.current) {
       setFormData((prev) => {
         if (!prev.referralName) {
           hasPrefilledReferral.current = true
@@ -187,32 +195,6 @@ function PurchaseForm() {
     return () => clearInterval(interval)
   }, [])
 
-  const calculateRMB = useCallback(
-    (ghsAmount: string): string => {
-      const amount = Number.parseFloat(ghsAmount)
-      if (Number.isNaN(amount) || amount <= 0 || !rmbPerGhs) return "0.00"
-      return formatAmount(convertGhsToRmb(amount, rmbPerGhs))
-    },
-    [rmbPerGhs]
-  )
-
-  const calculateGHS = useCallback(
-    (rmbAmount: string): string => {
-      const amount = Number.parseFloat(rmbAmount)
-      if (Number.isNaN(amount) || amount <= 0 || !rmbPerGhs) return "0.00"
-      return formatAmount(convertRmbToGhs(amount, rmbPerGhs))
-    },
-    [rmbPerGhs]
-  )
-
-  const handleInputChange = (field: keyof FormData, value: string | File | null) => {
-    setSubmitError(null)
-    setFormData((prev) => ({ ...prev, [field]: value }))
-
-    if (field === "alipayQR" && value instanceof File) {
-    [dualRates]
-  )
-
   const quoteForForm = useCallback(
     (data: FormData) => {
       if (!dualRates) return null
@@ -228,6 +210,32 @@ function PurchaseForm() {
     [dualRates]
   )
 
+  const calculateRMB = useCallback(
+    (ghsAmount: string): string => {
+      const amount = Number.parseFloat(ghsAmount)
+      if (Number.isNaN(amount) || amount <= 0 || !dualRates) return "0.00"
+      return formatAmount(quoteFromGhs(amount, dualRates).rmb)
+    },
+    [dualRates]
+  )
+
+  const calculateGHS = useCallback(
+    (rmbAmount: string): string => {
+      const amount = Number.parseFloat(rmbAmount)
+      if (Number.isNaN(amount) || amount <= 0 || !dualRates) return "0.00"
+      return formatAmount(quoteFromRmb(amount, dualRates).ghs)
+    },
+    [dualRates]
+  )
+
+  const handleInputChange = (field: keyof FormData, value: string | File | null) => {
+    setSubmitError(null)
+    setFormData((prev) => ({ ...prev, [field]: value }))
+
+    if (field === "alipayQR" && value instanceof File) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setQrPreview(e.target?.result as string)
       }
       reader.readAsDataURL(value)
     } else if (field === "alipayQR" && !value) {
@@ -241,14 +249,6 @@ function PurchaseForm() {
 
   const setCurrencyMode = (mode: FormData["currencyMode"]) => {
     setFormData((prev) => {
-      if (!rmbPerGhs) {
-        return { ...prev, currencyMode: mode }
-      }
-      const next = { ...prev, currencyMode: mode }
-      if (mode === "rmb-to-ghs" && prev.currencyMode === "ghs-to-rmb" && prev.ghsAmount) {
-        const g = Number.parseFloat(prev.ghsAmount)
-        if (!Number.isNaN(g) && g > 0) {
-          next.rmbAmount = formatAmount(convertGhsToRmb(g, rmbPerGhs))
       if (!dualRates) {
         return { ...prev, currencyMode: mode }
       }
@@ -325,6 +325,14 @@ function PurchaseForm() {
   const validateForm = (): boolean => {
     const next: FormErrors = {}
     Object.assign(next, amountFieldError(formData))
+
+    if (!formData.fullName.trim()) {
+      next.fullName = "Add your full name"
+    }
+    const mobile = normalizeGhMobile(formData.mobileNumber)
+    if (!mobile) {
+      next.mobileNumber = "Add your mobile money number"
+    } else if (!/^0\d{9}$/.test(mobile)) {
       next.mobileNumber = "Use a valid Ghana number (10 digits, starting with 0)"
     }
     if (!formData.email.trim()) {
@@ -380,21 +388,15 @@ function PurchaseForm() {
       else if (missingQr) setStep(3)
       else setStep(2)
       setSubmitError("Please fix the highlighted fields, then try again.")
-        Object.keys(amountFieldError(formData)).length === 0
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const submitData = new FormData()
       submitData.append("fullName", formData.fullName.trim())
       submitData.append("mobileNumber", normalizeGhMobile(formData.mobileNumber))
       submitData.append("referralName", formData.referralName || "")
-      if (formData.currencyMode === "ghs-to-rmb") {
-        submitData.append("ghsAmount", formData.ghsAmount)
-        submitData.append("rmbAmount", calculateRMB(formData.ghsAmount))
-      } else {
-        submitData.append("rmbAmount", formData.rmbAmount)
-        submitData.append("ghsAmount", calculateGHS(formData.rmbAmount))
-      }
-      submitData.append("exchangeRate", rmbPerGhs != null ? String(rmbPerGhs) : "0")
       const quote = quoteForForm(formData)
       if (!quote) {
         setSubmitError("Enter a valid amount, then try again.")
@@ -404,6 +406,14 @@ function PurchaseForm() {
       submitData.append("ghsAmount", formatAmount(quote.ghs))
       submitData.append("rmbAmount", formatAmount(quote.rmb))
       submitData.append("exchangeRate", String(quote.rate))
+      submitData.append("email", formData.email.trim())
+      submitData.append("alipayQR", formData.alipayQR!)
+
+      const response = await fetch("/api/submit-transaction", {
+        method: "POST",
+        body: submitData,
+        credentials: "include",
+      })
 
       const raw = await response.text()
       let result: { success?: boolean; error?: string; details?: string; referenceCode?: string; recordId?: number }
@@ -420,16 +430,16 @@ function PurchaseForm() {
 
       if (response.ok && result.success) {
         const mobile = normalizeGhMobile(formData.mobileNumber)
-        const ghsOut =
-          formData.currencyMode === "ghs-to-rmb" ? formData.ghsAmount : calculateGHS(formData.rmbAmount)
-        const rmbOut =
-          formData.currencyMode === "ghs-to-rmb" ? calculateRMB(formData.ghsAmount) : formData.rmbAmount
+        const ghsOut = formatAmount(quote.ghs)
+        const rmbOut = formatAmount(quote.rmb)
 
         const confirmationData = {
           fullName: formData.fullName.trim(),
           mobileNumber: mobile,
-        const ghsOut = formatAmount(quote.ghs)
-        const rmbOut = formatAmount(quote.rmb)
+          referralName: formData.referralName || "",
+          ghsAmount: ghsOut,
+          rmbAmount: rmbOut,
+          currencyMode: formData.currencyMode,
           email: formData.email.trim(),
           referenceCode: result.referenceCode,
           recordId: result.recordId,
@@ -485,7 +495,7 @@ function PurchaseForm() {
               Step {step} of 3 — {step === 1 ? "Your trade" : step === 2 ? "Your contact" : "Review & send"}
             </p>
           </div>
-              <img src="/logo-nav.png?v=5" alt="" className="w-9 h-9 object-contain" />
+        </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 gap-6">
           {step === 1 && (
@@ -493,16 +503,6 @@ function PurchaseForm() {
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">How much are you trading?</h2>
                 <p className="text-sm text-muted-foreground mt-1">Pick a direction, then enter one amount — we calculate the other.</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrencyMode("ghs-to-rmb")}
-                  className={cn(
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Minimum ₵{MIN_GHS_AMOUNT}. Enter one amount — we calculate the other.
-                    </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -552,14 +552,6 @@ function PurchaseForm() {
                       className={cn("pl-9 text-lg h-12", errors.ghsAmount && "border-red-500")}
                     />
                   </div>
-                  {dualRates &&
-                  quoteForForm(formData)?.tier === "small" &&
-                  Number.parseFloat(formData.ghsAmount) >= MIN_GHS_AMOUNT ? (
-                    <p className="text-xs leading-relaxed text-amber-800">
-                      Purchases under ₵{STANDARD_TIER_MIN_GHS.toLocaleString()} use a lower rate:{" "}
-                      <strong>1 GHS = {dualRates.small.toFixed(2)} RMB</strong>.
-                    </p>
-                  ) : null}
                   <div className="flex flex-wrap gap-2">
                     {GHS_QUICK.map((n) => (
                       <button
@@ -573,6 +565,12 @@ function PurchaseForm() {
                     ))}
                   </div>
                   {errors.ghsAmount && <p className="text-sm text-red-600">{errors.ghsAmount}</p>}
+                  {dualRates && quoteForForm(formData)?.tier === "small" && Number.parseFloat(formData.ghsAmount) > 0 && (
+                    <p className="text-xs text-amber-800">
+                      Purchases under ₵{STANDARD_TIER_MIN_GHS.toLocaleString()} use a lower rate:{" "}
+                      1 GHS = {dualRates.small.toFixed(2)} RMB (minimum ₵{MIN_GHS_AMOUNT}).
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -590,18 +588,26 @@ function PurchaseForm() {
                       className={cn("pl-9 text-lg h-12", errors.rmbAmount && "border-red-500")}
                     />
                   </div>
-                  {dualRates && quoteForForm(formData)?.tier === "small" ? (
-                    <p className="text-xs leading-relaxed text-amber-800">
-                      Purchases under ₵{STANDARD_TIER_MIN_GHS.toLocaleString()} use a lower rate:{" "}
-                      <strong>1 GHS = {dualRates.small.toFixed(2)} RMB</strong>.
-                    </p>
-                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    {RMB_QUICK.map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => handleInputChange("rmbAmount", String(n))}
+                        className="rounded-full border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-amber-50 hover:border-amber-300 transition-colors"
+                      >
                         ¥{n.toLocaleString()}
                       </button>
                     ))}
                   </div>
                   {errors.rmbAmount && <p className="text-sm text-red-600">{errors.rmbAmount}</p>}
-                        onClick={() => handleInputChange("rmbAmount", String(n))}
+                  {dualRates && quoteForForm(formData)?.tier === "small" ? (
+                    <p className="text-xs text-amber-800">
+                      Purchases under ₵{STANDARD_TIER_MIN_GHS.toLocaleString()} use a lower rate:{" "}
+                      1 GHS = {dualRates.small.toFixed(2)} RMB (minimum ₵{MIN_GHS_AMOUNT}).
+                    </p>
+                  ) : null}
+                </div>
               )}
 
               {loadingRate ? (
@@ -635,16 +641,16 @@ function PurchaseForm() {
                         <p className="text-muted-foreground">Enter an amount to see your conversion.</p>
                       )}
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Today&apos;s rate: 1 GHS = {rmbPerGhs.toFixed(2)} RMB
+                        Rate used: 1 GHS = {(quoteForForm(formData)?.rate ?? rmbPerGhs).toFixed(2)} RMB
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Rate used: 1 GHS = {(quoteForForm(formData)?.rate ?? rmbPerGhs).toFixed(2)} RMB
-                      </p>
+              <Button
+                type="button"
+                onClick={goNext}
                 disabled={loadingRate || ratePending}
                 className="w-full h-12 text-base font-semibold gap-2"
                 size="lg"
@@ -864,7 +870,6 @@ export default function PurchasePage() {
   return (
     <Suspense
       fallback={
-
         <div className="page-shell hero-gradient flex items-center justify-center font-medium text-emerald-800">
           Loading…
         </div>
