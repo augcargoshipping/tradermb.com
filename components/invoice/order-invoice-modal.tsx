@@ -125,7 +125,7 @@ export default function OrderInvoiceModal({ order, onClose }: OrderInvoiceModalP
           >
             <div className="mb-6 flex items-center gap-3 border-b border-gray-200 pb-4">
               <img
-                src="/logo-nav.png?v=3"
+                src="/logo-nav.png?v=5"
                 alt=""
                 className="h-10 w-10 object-contain"
                 crossOrigin="anonymous"

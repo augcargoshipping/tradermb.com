@@ -61,6 +61,7 @@ export function HeroSlideshow({ className }: { className?: string }) {
 
   return (
     <div
+      suppressHydrationWarning
       className={cn(
         "relative w-full max-w-[min(100%,320px)] sm:max-w-[420px] lg:max-w-[520px]",
         className

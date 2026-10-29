@@ -1,6 +1,7 @@
 import { sendMail } from "@/lib/mail"
 import { emailShell, escapeHtml } from "@/lib/email-format"
 import { resolvePaymentSettings } from "@/lib/payment-settings"
+import { formatGhsMoney, moolreCollectionFees } from "@/lib/moolre-fees"
 
 export type CustomerOrderEmail = {
   referenceCode: string
@@ -18,10 +19,27 @@ export async function notifyCustomerPaymentInstructions(order: CustomerOrderEmai
   const payment = await resolvePaymentSettings()
   const ref = escapeHtml(order.referenceCode)
   const name = escapeHtml(order.customerName)
+  const fees = payment.moolreEnabled ? moolreCollectionFees(order.ghsAmount) : null
+  const payGhs = fees ? formatGhsMoney(fees.collect) : String(order.ghsAmount)
 
   const html = emailShell(
     "TRADE RMB — Complete your payment",
+    payment.moolreEnabled
+      ? `
+      <p style="color: #374151; margin: 0 0 16px;">Hi ${name}, thank you for your order. Open your confirmation page and approve the mobile money prompt on <strong>${escapeHtml(order.mobileNumber)}</strong>.</p>
+      <div style="background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+        <p style="margin: 0 0 8px; font-size: 14px; color: #065f46;"><strong>Pay GHS ${payGhs} from your MoMo number</strong></p>
+        <p style="margin: 0; font-size: 20px; font-weight: bold; color: #047857; text-align: center;">${escapeHtml(order.mobileNumber)}</p>
+        <p style="margin: 8px 0 0; text-align: center; color: #6b7280; font-size: 14px;">Includes MoMo processing fee GHS ${fees ? formatGhsMoney(fees.fee) : "0.00"}. If the prompt does not arrive, send manually to ${escapeHtml(payment.number)} (${escapeHtml(payment.name)})</p>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px;">
+        <tr><td style="padding: 8px 0; color: #6b7280;">Reference code</td><td style="padding: 8px 0; font-weight: bold; font-family: monospace;">${ref}</td></tr>
+        <tr><td style="padding: 8px 0; color: #6b7280;">Amount to pay</td><td style="padding: 8px 0; font-weight: bold; color: #dc2626;">GHS ${payGhs}</td></tr>
+        <tr><td style="padding: 8px 0; color: #6b7280;">You will receive</td><td style="padding: 8px 0; font-weight: bold; color: #2563eb;">¥${order.rmbAmount}</td></tr>
+      </table>
+      <p style="color: #6b7280; font-size: 13px; margin: 16px 0 0;">Approve the prompt on your phone. This page updates automatically when payment is received.</p>
     `
+      : `
       <p style="color: #374151; margin: 0 0 16px;">Hi ${name}, thank you for your order. Send mobile money using the details below.</p>
       <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
         <p style="margin: 0 0 8px; font-size: 14px; color: #9a3412;"><strong>Send MoMo payment to</strong></p>
@@ -47,20 +65,30 @@ export async function notifyCustomerPaymentInstructions(order: CustomerOrderEmai
     `
   )
 
-  const text = [
-    `Hi ${order.customerName},`,
-    "",
-    "Thank you for your TRADE RMB order. Send mobile money to:",
-    payment.number,
-    payment.name,
-    "",
-    `Reference: ${order.referenceCode}`,
-    `Pay: GHS ${order.ghsAmount}`,
-    `Receive: RMB ${order.rmbAmount}`,
-    `Pay from: ${order.mobileNumber}`,
-    "",
-    "After paying, confirm on your order page that you have sent the MoMo payment.",
-  ].join("\n")
+  const text = payment.moolreEnabled
+    ? [
+        `Hi ${order.customerName},`,
+        "",
+        "Thank you for your TRADE RMB order. Approve the mobile money prompt on your phone.",
+        `Pay from: ${order.mobileNumber}`,
+        `Pay: GHS ${payGhs} (includes MoMo processing fee)`,
+        `Receive: RMB ${order.rmbAmount}`,
+        `Reference: ${order.referenceCode}`,
+      ].join("\n")
+    : [
+        `Hi ${order.customerName},`,
+        "",
+        "Thank you for your TRADE RMB order. Send mobile money to:",
+        payment.number,
+        payment.name,
+        "",
+        `Reference: ${order.referenceCode}`,
+        `Pay: GHS ${order.ghsAmount}`,
+        `Receive: RMB ${order.rmbAmount}`,
+        `Pay from: ${order.mobileNumber}`,
+        "",
+        "After paying, confirm on your order page that you have sent the MoMo payment.",
+      ].join("\n")
 
   try {
     await sendMail({

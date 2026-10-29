@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
 import { useSession } from "next-auth/react"
 import { openSupportWhatsApp, type SupportWhatsAppContext } from "@/lib/whatsapp"
+import { MoolrePayPanel } from "@/components/site/moolre-pay-panel"
+import { formatGhsMoney, moolreCollectionFees } from "@/lib/moolre-fees"
 
 interface SubmissionData {
   fullName: string
@@ -47,6 +49,7 @@ export default function ConfirmationPage() {
   const [rate, setRate] = useState<number | null>(null)
   const [paymentNumber, setPaymentNumber] = useState<string | null>(null)
   const [paymentName, setPaymentName] = useState<string | null>(null)
+  const [moolreEnabled, setMoolreEnabled] = useState<boolean | null>(null)
   const [momoConfirmed, setMomoConfirmed] = useState(false)
   const [confirmingMomo, setConfirmingMomo] = useState(false)
   const [momoError, setMomoError] = useState<string | null>(null)
@@ -80,9 +83,13 @@ export default function ConfirmationPage() {
         if (data.success) {
           if (typeof data.number === "string") setPaymentNumber(data.number)
           if (typeof data.name === "string") setPaymentName(data.name)
+          setMoolreEnabled(data.moolreEnabled === true)
+        } else {
+          setMoolreEnabled(false)
         }
       } catch (err) {
         console.error("Failed to load payment details", err)
+        setMoolreEnabled(false)
       }
     }
     loadPaymentDetails()
@@ -203,6 +210,9 @@ export default function ConfirmationPage() {
     )
   }
 
+  const tradeGhs = Number.parseFloat(submissionData.ghsAmount)
+  const moolreFees = moolreEnabled ? moolreCollectionFees(tradeGhs) : null
+
   return (
     <div className="page-shell hero-gradient">
       <div className="container-tight section-pad flex w-full flex-1 flex-col items-center py-4 sm:py-8 safe-bottom">
@@ -234,54 +244,125 @@ export default function ConfirmationPage() {
                   <Smartphone className="h-5 w-5 shrink-0 text-orange-600 sm:h-6 sm:w-6" />
                   <h3 className="text-base font-semibold text-gray-900 sm:text-lg">Mobile Money Payment</h3>
                 </div>
-                <div className="rounded-lg border border-orange-300 bg-white p-3 text-center">
-                  <p className="mb-2 text-sm font-medium text-gray-700">Send payment to:</p>
-                  <p className="break-all text-xl font-bold text-orange-600 sm:text-2xl">
-                    {paymentNumber ?? "Loading…"}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-600 sm:text-sm">(MTN Mobile Money)</p>
-                  <p className="mt-2 text-sm font-medium text-gray-700">
-                    {paymentName ?? "Loading…"}
-                  </p>
-                </div>
-                <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                  <p className="mb-2 text-sm font-medium text-yellow-800">Important:</p>
-                  <ul className="space-y-1.5 text-xs leading-relaxed text-yellow-700 sm:text-sm">
-                    <li>Use reference code: <strong className="break-all">{submissionData.referenceCode}</strong></li>
-                    <li>Send exactly GHS {submissionData.ghsAmount}</li>
-                    <li>Keep your payment receipt</li>
-                    <li><strong>⚠️ Pay from the same MoMo number you entered: {submissionData.mobileNumber}</strong></li>
-                  </ul>
-                </div>
 
-                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      id="momo-sent"
-                      checked={momoConfirmed}
-                      disabled={momoConfirmed || confirmingMomo || !submissionData.recordId}
-                      onCheckedChange={(value) => void handleMomoConfirmed(value === true)}
-                      className="mt-0.5 h-5 w-5 border-emerald-600 data-[state=checked]:bg-emerald-600"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <Label htmlFor="momo-sent" className="cursor-pointer text-sm font-semibold leading-snug text-emerald-900 sm:text-base">
-                        I have sent the mobile money payment
-                      </Label>
-                      <p className="mt-1 text-xs leading-relaxed text-emerald-800 sm:text-sm">
-                        Tick this after you pay. Our team at Trade RMB will be notified to verify your payment.
-                      </p>
-                      {confirmingMomo && (
-                        <p className="mt-2 text-xs text-emerald-700">Notifying our team…</p>
-                      )}
-                      {momoConfirmed && (
-                        <p className="mt-2 text-xs font-medium text-emerald-700 sm:text-sm">
-                          ✓ Thanks — we&apos;ll verify your payment and send your RMB soon.
-                        </p>
-                      )}
-                      {momoError && <p className="mt-2 text-xs text-red-600">{momoError}</p>}
-                    </div>
+                {momoConfirmed ? (
+                  <div className="rounded-lg border border-emerald-300 bg-white p-4 text-center">
+                    <p className="text-sm font-semibold text-emerald-800 sm:text-base">
+                      ✓ Payment received — we&apos;ll send your RMB soon.
+                    </p>
                   </div>
-                </div>
+                ) : moolreEnabled === null ? (
+                  <p className="text-sm text-gray-600">Loading payment options…</p>
+                ) : moolreEnabled ? (
+                  <>
+                    <MoolrePayPanel
+                      recordId={submissionData.recordId}
+                      referenceCode={submissionData.referenceCode}
+                      mobileNumber={submissionData.mobileNumber}
+                      ghsAmount={submissionData.ghsAmount}
+                      onPaid={() => {
+                        setMomoConfirmed(true)
+                        try {
+                          sessionStorage.setItem(`momoConfirmed_${submissionData.referenceCode}`, "1")
+                        } catch {
+                          /* ignore */
+                        }
+                        toast({
+                          title: "Payment received",
+                          description: "We’ll verify and send your RMB shortly.",
+                        })
+                      }}
+                    />
+                    <details className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                      <summary className="cursor-pointer text-sm font-medium text-yellow-800">
+                        Pay manually instead
+                      </summary>
+                      <div className="mt-3 rounded-lg border border-orange-300 bg-white p-3 text-center">
+                        <p className="mb-2 text-sm font-medium text-gray-700">Send payment to:</p>
+                        <p className="break-all text-xl font-bold text-orange-600 sm:text-2xl">
+                          {paymentNumber ?? "Loading…"}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-600 sm:text-sm">(MTN Mobile Money)</p>
+                        <p className="mt-2 text-sm font-medium text-gray-700">
+                          {paymentName ?? "Loading…"}
+                        </p>
+                      </div>
+                      <ul className="mt-3 space-y-1.5 text-xs leading-relaxed text-yellow-700 sm:text-sm">
+                        <li>Use reference code: <strong className="break-all">{submissionData.referenceCode}</strong></li>
+                        <li>Send exactly GHS {submissionData.ghsAmount}</li>
+                        <li>Pay from: <strong>{submissionData.mobileNumber}</strong></li>
+                      </ul>
+                      <div className="mt-3 flex items-start gap-3">
+                        <Checkbox
+                          id="momo-sent"
+                          checked={momoConfirmed}
+                          disabled={momoConfirmed || confirmingMomo || !submissionData.recordId}
+                          onCheckedChange={(value) => void handleMomoConfirmed(value === true)}
+                          className="mt-0.5 h-5 w-5 border-emerald-600 data-[state=checked]:bg-emerald-600"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <Label htmlFor="momo-sent" className="cursor-pointer text-sm font-semibold leading-snug text-emerald-900">
+                            I have sent the mobile money payment
+                          </Label>
+                          {confirmingMomo && (
+                            <p className="mt-2 text-xs text-emerald-700">Notifying our team…</p>
+                          )}
+                          {momoError && <p className="mt-2 text-xs text-red-600">{momoError}</p>}
+                        </div>
+                      </div>
+                    </details>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-lg border border-orange-300 bg-white p-3 text-center">
+                      <p className="mb-2 text-sm font-medium text-gray-700">Send payment to:</p>
+                      <p className="break-all text-xl font-bold text-orange-600 sm:text-2xl">
+                        {paymentNumber ?? "Loading…"}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-600 sm:text-sm">(MTN Mobile Money)</p>
+                      <p className="mt-2 text-sm font-medium text-gray-700">
+                        {paymentName ?? "Loading…"}
+                      </p>
+                    </div>
+                    <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                      <p className="mb-2 text-sm font-medium text-yellow-800">Important:</p>
+                      <ul className="space-y-1.5 text-xs leading-relaxed text-yellow-700 sm:text-sm">
+                        <li>Use reference code: <strong className="break-all">{submissionData.referenceCode}</strong></li>
+                        <li>Send exactly GHS {submissionData.ghsAmount}</li>
+                        <li>Keep your payment receipt</li>
+                        <li><strong>⚠️ Pay from the same MoMo number you entered: {submissionData.mobileNumber}</strong></li>
+                      </ul>
+                    </div>
+                    <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          id="momo-sent"
+                          checked={momoConfirmed}
+                          disabled={momoConfirmed || confirmingMomo || !submissionData.recordId}
+                          onCheckedChange={(value) => void handleMomoConfirmed(value === true)}
+                          className="mt-0.5 h-5 w-5 border-emerald-600 data-[state=checked]:bg-emerald-600"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <Label htmlFor="momo-sent" className="cursor-pointer text-sm font-semibold leading-snug text-emerald-900 sm:text-base">
+                            I have sent the mobile money payment
+                          </Label>
+                          <p className="mt-1 text-xs leading-relaxed text-emerald-800 sm:text-sm">
+                            Tick this after you pay. Our team at Trade RMB will be notified to verify your payment.
+                          </p>
+                          {confirmingMomo && (
+                            <p className="mt-2 text-xs text-emerald-700">Notifying our team…</p>
+                          )}
+                          {momoConfirmed && (
+                            <p className="mt-2 text-xs font-medium text-emerald-700 sm:text-sm">
+                              ✓ Thanks — we&apos;ll verify your payment and send your RMB soon.
+                            </p>
+                          )}
+                          {momoError && <p className="mt-2 text-xs text-red-600">{momoError}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* In-Person Payment Option */}
@@ -349,8 +430,20 @@ export default function ConfirmationPage() {
                   )}
                   <div className="mt-2 border-t border-gray-300 pt-2 space-y-2">
                     <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-gray-600">Trade amount</span>
+                      <span className="font-medium">GHS {submissionData.ghsAmount}</span>
+                    </div>
+                    {moolreFees && (
+                      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="text-gray-600">MoMo processing fee</span>
+                        <span className="font-medium">GHS {formatGhsMoney(moolreFees.fee)}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-gray-600">Amount to Pay</span>
-                      <span className="font-bold text-red-600">GHS {submissionData.ghsAmount}</span>
+                      <span className="font-bold text-red-600">
+                        GHS {moolreFees ? formatGhsMoney(moolreFees.collect) : submissionData.ghsAmount}
+                      </span>
                     </div>
                     <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-gray-600">You&apos;ll Receive</span>
@@ -367,10 +460,19 @@ export default function ConfirmationPage() {
                   <div>
                     <h4 className="font-semibold text-blue-800 mb-2">Next Steps:</h4>
                     <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-                      <li>Choose your preferred payment method above</li>
-                      <li>Use reference code: <strong>{submissionData.referenceCode}</strong></li>
+                      {moolreEnabled ? (
+                        <>
+                          <li>Choose your network and tap Pay with mobile money</li>
+                          <li>Approve the prompt on {submissionData.mobileNumber}</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>Send mobile money to the number above</li>
+                          <li>Use reference code: <strong>{submissionData.referenceCode}</strong></li>
+                        </>
+                      )}
                       <li>Your RMB will be transferred within 24 hours</li>
-                      <li>You'll receive SMS confirmation once complete</li>
+                      <li>You&apos;ll receive confirmation once complete</li>
                     </ol>
                   </div>
                 </div>

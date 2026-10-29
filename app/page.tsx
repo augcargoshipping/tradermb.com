@@ -44,7 +44,7 @@ const features = [
   {
     icon: Clock,
     title: "Live rates",
-    text: "One central rate powers the homepage, purchase form, and calculator — always in sync.",
+    text: "The homepage shows the ₵1,000+ rate. Smaller trades use a separate rate, shown clearly before you pay.",
     accent: "from-blue-400 to-cyan-500",
   },
 ]
@@ -66,7 +66,7 @@ const faqs = [
   },
   {
     q: "Is there a minimum amount?",
-    a: "Check the purchase form for current limits. Quick amount buttons help you start faster on mobile.",
+    a: "Yes — ₵50. The rate on this page is for ₵1,000 or more. Under ₵1,000 uses a lower rate, shown next to the amount.",
   },
 ]
 
@@ -170,7 +170,7 @@ function LandingContent() {
                     <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/90 px-4 py-2.5">
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                       <span className="text-sm text-slate-700">
-                        Today: <strong className="text-emerald-800">1 GHS = {rmbPerGhs.toFixed(2)} RMB</strong>
+                        Today (₵1,000+): <strong className="text-emerald-800">1 GHS = {rmbPerGhs.toFixed(2)} RMB</strong>
                       </span>
                     </div>
                   ) : null}

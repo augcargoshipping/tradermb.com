@@ -38,6 +38,10 @@ export interface OrderRecord {
   qr_mime: string | null
   user_id: string | null
   momo_confirmed_at: string | null
+  moolre_external_ref: string | null
+  moolre_channel: string | null
+  moolre_status: string | null
+  moolre_transaction_id: string | null
   created_at: string
   updated_at: string
 }
@@ -64,6 +68,22 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     momo_confirmed_at:
       row.momo_confirmed_at != null && String(row.momo_confirmed_at).length > 0
         ? String(row.momo_confirmed_at)
+        : null,
+    moolre_external_ref:
+      row.moolre_external_ref != null && String(row.moolre_external_ref).length > 0
+        ? String(row.moolre_external_ref)
+        : null,
+    moolre_channel:
+      row.moolre_channel != null && String(row.moolre_channel).length > 0
+        ? String(row.moolre_channel)
+        : null,
+    moolre_status:
+      row.moolre_status != null && String(row.moolre_status).length > 0
+        ? String(row.moolre_status)
+        : null,
+    moolre_transaction_id:
+      row.moolre_transaction_id != null && String(row.moolre_transaction_id).length > 0
+        ? String(row.moolre_transaction_id)
         : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -115,6 +135,80 @@ export class OrderRepo {
     })
 
     return Number(result.lastInsertRowid)
+  }
+
+  async getOrderByReferenceCode(referenceCode: string): Promise<OrderRecord | null> {
+    const db = getDbClient()
+    const result = await db.execute({
+      sql: `SELECT * FROM orders WHERE reference_code = ? LIMIT 1`,
+      args: [referenceCode],
+    })
+    if (!result.rows.length) return null
+    return mapOrder(result.rows[0] as Record<string, unknown>)
+  }
+
+  async getOrderByMoolreExternalRef(externalRef: string): Promise<OrderRecord | null> {
+    const db = getDbClient()
+    const result = await db.execute({
+      sql: `SELECT * FROM orders WHERE moolre_external_ref = ? LIMIT 1`,
+      args: [externalRef],
+    })
+    if (!result.rows.length) return null
+    return mapOrder(result.rows[0] as Record<string, unknown>)
+  }
+
+  async updateMoolreAttempt(id: number, patch: {
+    externalRef: string
+    channel?: string
+    status: string
+    transactionId?: string | null
+  }): Promise<void> {
+    const db = getDbClient()
+    const now = new Date().toISOString()
+    await db.execute({
+      sql: `UPDATE orders
+            SET moolre_external_ref = ?, moolre_channel = COALESCE(?, moolre_channel),
+                moolre_status = ?, moolre_transaction_id = COALESCE(?, moolre_transaction_id),
+                updated_at = ?
+            WHERE id = ?`,
+      args: [patch.externalRef, patch.channel ?? null, patch.status, patch.transactionId ?? null, now, id],
+    })
+  }
+
+  async markOrderPaidFromMoolre(order: OrderRecord, input: {
+    externalRef: string
+    transactionId?: string | null
+  }): Promise<{ newlyPaid: boolean; order: OrderRecord }> {
+    if (order.status === "Paid" || order.status === "Completed") {
+      return { newlyPaid: false, order }
+    }
+    if (order.status === "Cancelled") {
+      return { newlyPaid: false, order }
+    }
+
+    const db = getDbClient()
+    const now = new Date().toISOString()
+    await db.execute({
+      sql: `UPDATE orders
+            SET status = ?, momo_confirmed_at = COALESCE(momo_confirmed_at, ?),
+                moolre_external_ref = ?, moolre_status = ?, moolre_transaction_id = COALESCE(?, moolre_transaction_id),
+                updated_at = ?
+            WHERE id = ?`,
+      args: ["Paid", now, input.externalRef, "paid", input.transactionId ?? null, now, order.id],
+    })
+
+    return {
+      newlyPaid: true,
+      order: {
+        ...order,
+        status: "Paid",
+        momo_confirmed_at: order.momo_confirmed_at ?? now,
+        moolre_external_ref: input.externalRef,
+        moolre_status: "paid",
+        moolre_transaction_id: input.transactionId ?? order.moolre_transaction_id,
+        updated_at: now,
+      },
+    }
   }
 
   async getOrderById(id: number): Promise<OrderRecord | null> {

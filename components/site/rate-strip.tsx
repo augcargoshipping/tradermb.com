@@ -93,7 +93,7 @@ export function RateStrip({
               </p>
 
               <p className="text-xs text-emerald-100/75">
-                Same rate on purchase & calculator
+                Advertised rate for ₵1,000+ trades. Smaller amounts use a different rate at checkout.
               </p>
             </button>
 

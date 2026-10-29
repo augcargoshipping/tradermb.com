@@ -27,7 +27,14 @@ import {
   ChevronDown,
 } from "lucide-react"
 import { useExchangeRate } from "@/hooks/use-exchange-rate"
-import { convertGhsToRmb, convertRmbToGhs, formatAmount } from "@/lib/exchange-math"
+import { formatAmount } from "@/lib/exchange-math"
+import {
+  MIN_GHS_AMOUNT,
+  minGhsError,
+  quoteFromGhs,
+  quoteFromRmb,
+  STANDARD_TIER_MIN_GHS,
+} from "@/lib/trade-policy"
 
 export const dynamic = "force-dynamic"
 
@@ -137,20 +144,17 @@ function PurchaseForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const {
     rate: rmbPerGhs,
+    smallRate,
     loading: loadingRate,
     status: rateStatus,
     tradingEnabled,
     pendingMessage,
   } = useExchangeRate()
   const ratePending = rateStatus === "pending" || !tradingEnabled
-  const [currentTestimonial, setCurrentTestimonial] = useState(0)
-  const hasPrefilledReferral = useRef(false)
-  const hasPrefilledUser = useRef(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    const ref = searchParams?.get("ref")
-    if (ref && !hasPrefilledReferral.current) {
+  const dualRates =
+    rmbPerGhs && rmbPerGhs > 0
+      ? { standard: rmbPerGhs, small: smallRate && smallRate > 0 ? smallRate : rmbPerGhs }
+      : null
       setFormData((prev) => {
         if (!prev.referralName) {
           hasPrefilledReferral.current = true
@@ -206,9 +210,24 @@ function PurchaseForm() {
     setFormData((prev) => ({ ...prev, [field]: value }))
 
     if (field === "alipayQR" && value instanceof File) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setQrPreview(e.target?.result as string)
+    [dualRates]
+  )
+
+  const quoteForForm = useCallback(
+    (data: FormData) => {
+      if (!dualRates) return null
+      if (data.currencyMode === "ghs-to-rmb") {
+        const g = Number.parseFloat(data.ghsAmount)
+        if (!Number.isFinite(g) || g <= 0) return null
+        return quoteFromGhs(g, dualRates)
+      }
+      const r = Number.parseFloat(data.rmbAmount)
+      if (!Number.isFinite(r) || r <= 0) return null
+      return quoteFromRmb(r, dualRates)
+    },
+    [dualRates]
+  )
+
       }
       reader.readAsDataURL(value)
     } else if (field === "alipayQR" && !value) {
@@ -230,11 +249,19 @@ function PurchaseForm() {
         const g = Number.parseFloat(prev.ghsAmount)
         if (!Number.isNaN(g) && g > 0) {
           next.rmbAmount = formatAmount(convertGhsToRmb(g, rmbPerGhs))
+      if (!dualRates) {
+        return { ...prev, currencyMode: mode }
+      }
+      const next = { ...prev, currencyMode: mode }
+      if (mode === "rmb-to-ghs" && prev.currencyMode === "ghs-to-rmb" && prev.ghsAmount) {
+        const g = Number.parseFloat(prev.ghsAmount)
+        if (!Number.isNaN(g) && g > 0) {
+          next.rmbAmount = formatAmount(quoteFromGhs(g, dualRates).rmb)
         }
       } else if (mode === "ghs-to-rmb" && prev.currencyMode === "rmb-to-ghs" && prev.rmbAmount) {
         const r = Number.parseFloat(prev.rmbAmount)
         if (!Number.isNaN(r) && r > 0) {
-          next.ghsAmount = formatAmount(convertRmbToGhs(r, rmbPerGhs))
+          next.ghsAmount = formatAmount(quoteFromRmb(r, dualRates).ghs)
         }
       }
       return next
@@ -242,34 +269,35 @@ function PurchaseForm() {
     setErrors((prev) => ({ ...prev, currencyMode: undefined, ghsAmount: undefined, rmbAmount: undefined }))
   }
 
-  const validateStep1 = (): boolean => {
-    const next: FormErrors = {}
-    if (loadingRate) {
-      next.ghsAmount = "Exchange rate is loading. Please wait a moment."
-      setErrors(next)
-      return false
-    }
+  const amountFieldError = (data: FormData): Partial<FormErrors> => {
+    if (loadingRate) return { ghsAmount: "Exchange rate is loading. Please wait a moment." }
     if (ratePending) {
-      next.ghsAmount = `${pendingMessage}. New trades are paused until the rate is posted.`
-      setErrors(next)
-      return false
+      return { ghsAmount: `${pendingMessage}. New trades are paused until the rate is posted.` }
     }
-    if (!rmbPerGhs) {
-      next.ghsAmount = "Exchange rate is not available yet."
-      setErrors(next)
-      return false
-    }
-    if (formData.currencyMode === "ghs-to-rmb") {
-      const v = Number.parseFloat(formData.ghsAmount)
-      if (!formData.ghsAmount || Number.isNaN(v) || v <= 0) {
-        next.ghsAmount = "Enter how much GHS you want to send"
+    if (!dualRates) return { ghsAmount: "Exchange rate is not available yet." }
+
+    if (data.currencyMode === "ghs-to-rmb") {
+      const v = Number.parseFloat(data.ghsAmount)
+      if (!data.ghsAmount || Number.isNaN(v) || v <= 0) {
+        return { ghsAmount: "Enter how much GHS you want to send" }
       }
-    } else {
-      const v = Number.parseFloat(formData.rmbAmount)
-      if (!formData.rmbAmount || Number.isNaN(v) || v <= 0) {
-        next.rmbAmount = "Enter how much RMB you want to receive"
-      }
+      const minErr = minGhsError(v)
+      if (minErr) return { ghsAmount: minErr }
+      return {}
     }
+
+    const v = Number.parseFloat(data.rmbAmount)
+    if (!data.rmbAmount || Number.isNaN(v) || v <= 0) {
+      return { rmbAmount: "Enter how much RMB you want to receive" }
+    }
+    const quote = quoteFromRmb(v, dualRates)
+    const minErr = minGhsError(quote.ghs)
+    if (minErr) return { rmbAmount: minErr }
+    return {}
+  }
+
+  const validateStep1 = (): boolean => {
+    const next: FormErrors = { ...amountFieldError(formData) }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -296,31 +324,7 @@ function PurchaseForm() {
 
   const validateForm = (): boolean => {
     const next: FormErrors = {}
-    if (loadingRate) {
-      next.ghsAmount = "Exchange rate is loading. Please wait a moment."
-    } else if (ratePending) {
-      next.ghsAmount = `${pendingMessage}. New trades are paused until the rate is posted.`
-    } else if (!rmbPerGhs) {
-      next.ghsAmount = "Exchange rate is not available yet."
-    } else if (formData.currencyMode === "ghs-to-rmb") {
-      const v = Number.parseFloat(formData.ghsAmount)
-      if (!formData.ghsAmount || Number.isNaN(v) || v <= 0) {
-        next.ghsAmount = "Enter how much GHS you want to send"
-      }
-    } else {
-      const v = Number.parseFloat(formData.rmbAmount)
-      if (!formData.rmbAmount || Number.isNaN(v) || v <= 0) {
-        next.rmbAmount = "Enter how much RMB you want to receive"
-      }
-    }
-
-    if (!formData.fullName.trim()) {
-      next.fullName = "Add your full name"
-    }
-    const mobile = normalizeGhMobile(formData.mobileNumber)
-    if (!mobile) {
-      next.mobileNumber = "Add your mobile money number"
-    } else if (!/^0\d{9}$/.test(mobile)) {
+    Object.assign(next, amountFieldError(formData))
       next.mobileNumber = "Use a valid Ghana number (10 digits, starting with 0)"
     }
     if (!formData.email.trim()) {
@@ -376,9 +380,7 @@ function PurchaseForm() {
       else if (missingQr) setStep(3)
       else setStep(2)
       setSubmitError("Please fix the highlighted fields, then try again.")
-      return
-    }
-
+        Object.keys(amountFieldError(formData)).length === 0
     setIsSubmitting(true)
     try {
       const submitData = new FormData()
@@ -393,14 +395,15 @@ function PurchaseForm() {
         submitData.append("ghsAmount", calculateGHS(formData.rmbAmount))
       }
       submitData.append("exchangeRate", rmbPerGhs != null ? String(rmbPerGhs) : "0")
-      submitData.append("email", formData.email.trim())
-      submitData.append("alipayQR", formData.alipayQR!)
-
-      const response = await fetch("/api/submit-transaction", {
-        method: "POST",
-        body: submitData,
-        credentials: "include",
-      })
+      const quote = quoteForForm(formData)
+      if (!quote) {
+        setSubmitError("Enter a valid amount, then try again.")
+        setIsSubmitting(false)
+        return
+      }
+      submitData.append("ghsAmount", formatAmount(quote.ghs))
+      submitData.append("rmbAmount", formatAmount(quote.rmb))
+      submitData.append("exchangeRate", String(quote.rate))
 
       const raw = await response.text()
       let result: { success?: boolean; error?: string; details?: string; referenceCode?: string; recordId?: number }
@@ -425,10 +428,8 @@ function PurchaseForm() {
         const confirmationData = {
           fullName: formData.fullName.trim(),
           mobileNumber: mobile,
-          referralName: formData.referralName || "",
-          ghsAmount: ghsOut,
-          rmbAmount: rmbOut,
-          currencyMode: formData.currencyMode,
+        const ghsOut = formatAmount(quote.ghs)
+        const rmbOut = formatAmount(quote.rmb)
           email: formData.email.trim(),
           referenceCode: result.referenceCode,
           recordId: result.recordId,
@@ -484,7 +485,7 @@ function PurchaseForm() {
               Step {step} of 3 — {step === 1 ? "Your trade" : step === 2 ? "Your contact" : "Review & send"}
             </p>
           </div>
-        </div>
+              <img src="/logo-nav.png?v=5" alt="" className="w-9 h-9 object-contain" />
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 gap-6">
           {step === 1 && (
@@ -492,6 +493,16 @@ function PurchaseForm() {
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">How much are you trading?</h2>
                 <p className="text-sm text-muted-foreground mt-1">Pick a direction, then enter one amount — we calculate the other.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrencyMode("ghs-to-rmb")}
+                  className={cn(
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Minimum ₵{MIN_GHS_AMOUNT}. Enter one amount — we calculate the other.
+                    </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -541,6 +552,14 @@ function PurchaseForm() {
                       className={cn("pl-9 text-lg h-12", errors.ghsAmount && "border-red-500")}
                     />
                   </div>
+                  {dualRates &&
+                  quoteForForm(formData)?.tier === "small" &&
+                  Number.parseFloat(formData.ghsAmount) >= MIN_GHS_AMOUNT ? (
+                    <p className="text-xs leading-relaxed text-amber-800">
+                      Purchases under ₵{STANDARD_TIER_MIN_GHS.toLocaleString()} use a lower rate:{" "}
+                      <strong>1 GHS = {dualRates.small.toFixed(2)} RMB</strong>.
+                    </p>
+                  ) : null}
                   <div className="flex flex-wrap gap-2">
                     {GHS_QUICK.map((n) => (
                       <button
@@ -571,20 +590,18 @@ function PurchaseForm() {
                       className={cn("pl-9 text-lg h-12", errors.rmbAmount && "border-red-500")}
                     />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {RMB_QUICK.map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => handleInputChange("rmbAmount", String(n))}
-                        className="rounded-full border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-amber-50 hover:border-amber-300 transition-colors"
-                      >
+                  {dualRates && quoteForForm(formData)?.tier === "small" ? (
+                    <p className="text-xs leading-relaxed text-amber-800">
+                      Purchases under ₵{STANDARD_TIER_MIN_GHS.toLocaleString()} use a lower rate:{" "}
+                      <strong>1 GHS = {dualRates.small.toFixed(2)} RMB</strong>.
+                    </p>
+                  ) : null}
                         ¥{n.toLocaleString()}
                       </button>
                     ))}
                   </div>
                   {errors.rmbAmount && <p className="text-sm text-red-600">{errors.rmbAmount}</p>}
-                </div>
+                        onClick={() => handleInputChange("rmbAmount", String(n))}
               )}
 
               {loadingRate ? (
@@ -625,9 +642,9 @@ function PurchaseForm() {
                 </div>
               )}
 
-              <Button
-                type="button"
-                onClick={goNext}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Rate used: 1 GHS = {(quoteForForm(formData)?.rate ?? rmbPerGhs).toFixed(2)} RMB
+                      </p>
                 disabled={loadingRate || ratePending}
                 className="w-full h-12 text-base font-semibold gap-2"
                 size="lg"
@@ -847,6 +864,7 @@ export default function PurchasePage() {
   return (
     <Suspense
       fallback={
+
         <div className="page-shell hero-gradient flex items-center justify-center font-medium text-emerald-800">
           Loading…
         </div>

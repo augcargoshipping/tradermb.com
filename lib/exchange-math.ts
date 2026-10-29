@@ -1,6 +1,6 @@
 /**
- * Turso stores `single_exchange_rate` as RMB per 1 GHS paid (e.g. 0.52).
- * The public banner shows the same: 1 GHS = stored rate RMB.
+ * Turso stores rates as RMB per 1 GHS paid (e.g. 0.52).
+ * The public banner shows the ₵1,000+ (standard) rate: 1 GHS = stored RMB.
  */
 
 export function ghsPerRmbFromStored(storedRmbPerGhs: number): number {

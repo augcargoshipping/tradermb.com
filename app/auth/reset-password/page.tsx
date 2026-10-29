@@ -116,7 +116,7 @@ function ResetPasswordFormContent() {
           <div className="flex items-center justify-center space-x-2 mb-4">
             {/* Custom Logo */}
             <img 
-              src="/logo-nav.png?v=3" 
+              src="/logo-nav.png?v=5" 
               alt="TRADE RMB Logo" 
               className="w-10 h-10 object-contain"
             />

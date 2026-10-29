@@ -2,8 +2,8 @@
  * Turso / libSQL schema.
  *
  * - orders: customer trades submitted from the site
- * - app_settings: live exchange rate (`single_exchange_rate` key)
- * - rates: legacy dual-tier table (optional; site uses app_settings only)
+ * - app_settings: live rates (`single_exchange_rate` ₵1,000+, `small_exchange_rate` under ₵1,000)
+ * - rates: legacy dual-tier table (optional; site uses app_settings)
  */
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS orders (

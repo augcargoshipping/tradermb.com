@@ -29,13 +29,13 @@ function SignUpContent() {
     }
   }, [searchParams]);
 
-  if (status === "loading") return null;
-  if (session && session.user) {
-    if (typeof window !== "undefined") {
+  useEffect(() => {
+    if (session?.user) {
       window.location.replace("/dashboard");
     }
-    return null;
-  }
+  }, [session?.user]);
+
+  if (status === "loading" || session?.user) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,7 +68,7 @@ function SignUpContent() {
     <div className="page-shell hero-gradient flex items-center justify-center py-8 px-4">
       <div className="glass-card flex w-full max-w-md flex-col items-center p-6 sm:p-8">
         <div className="flex flex-col items-center mb-4">
-          <img src="/logo-nav.png?v=3" alt="TRADE RMB Logo" className="w-12 h-12 object-contain mb-2" />
+          <img src="/logo-nav.png?v=5" alt="TRADE RMB Logo" className="w-12 h-12 object-contain mb-2" />
           <span className="text-2xl font-extrabold text-emerald-800 tracking-tight mb-2">TRADE RMB</span>
         </div>
         <h2 className="text-2xl font-bold text-emerald-800 mb-1 text-center">Create Account</h2>

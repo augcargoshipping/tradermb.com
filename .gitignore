@@ -19,6 +19,11 @@
 # misc
 .DS_Store
 *.pem
+local-dev.db
+local-dev.db-*
+*.db
+*.db-wal
+*.db-shm
 
 # debug
 npm-debug.log*
@@ -37,3 +42,4 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+.env*

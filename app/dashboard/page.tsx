@@ -157,7 +157,11 @@ export default function Dashboard() {
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/signup?referrer=${encodeURIComponent(session && session.user ? session.user.name : "")}`;
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+  const referralLink = `${origin}/auth/signup?referrer=${encodeURIComponent(session && session.user ? session.user.name : "")}`;
 
   const loadOrders = useCallback(async () => {
     setLoading(true);

@@ -48,10 +48,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await runMigrations()
-    await savePaymentSettings(number, name)
+    const moolreEnabled = body.moolreEnabled === true
 
-    return NextResponse.json({ success: true, number, name })
+    await runMigrations()
+    await savePaymentSettings(number, name, moolreEnabled)
+
+    return NextResponse.json({ success: true, number, name, moolreEnabled })
   } catch (error) {
     return NextResponse.json(
       {

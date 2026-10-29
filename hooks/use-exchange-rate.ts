@@ -8,6 +8,7 @@ import {
   writeCachedExchangeRate,
   type CachedExchangeRate,
 } from "@/lib/rate-cache"
+import { MIN_GHS_AMOUNT, STANDARD_TIER_MIN_GHS } from "@/lib/trade-policy"
 
 /** Stored in DB: RMB received per 1 GHS paid. */
 export type StoredExchangeRate = number
@@ -18,19 +19,26 @@ type FetchRatePayload = {
   success?: boolean
   status?: "active" | "pending"
   rate?: number
+  smallRate?: number
   ghsPerRmb?: number | null
   tradingEnabled?: boolean
   message?: string | null
+  minGhs?: number
+  standardFromGhs?: number
 }
 
 type RateState = {
   rate: number | null
+  smallRate: number | null
   ghsPerRmb: number | null
   status: RateDisplayStatus
   tradingEnabled: boolean
   pendingMessage: string
   loading: boolean
+  minGhs: number
+  standardFromGhs: number
   refresh: () => Promise<void>
+  applyRates: (standardRate: StoredExchangeRate, smallRate: StoredExchangeRate) => void
   applyRate: (storedRate: StoredExchangeRate) => void
 }
 
@@ -44,10 +52,13 @@ function payloadToCache(data: FetchRatePayload): CachedExchangeRate | null {
   if (data.status === "pending") {
     return {
       rate: 0,
+      smallRate: 0,
       ghsPerRmb: null,
       status: "pending",
       tradingEnabled: false,
       pendingMessage: data.message || RATE_PENDING_MESSAGE,
+      minGhs: data.minGhs || MIN_GHS_AMOUNT,
+      standardFromGhs: data.standardFromGhs || STANDARD_TIER_MIN_GHS,
     }
   }
 
@@ -56,8 +67,10 @@ function payloadToCache(data: FetchRatePayload): CachedExchangeRate | null {
     typeof data.rate === "number" &&
     data.rate > 0
   ) {
+    const small = typeof data.smallRate === "number" && data.smallRate > 0 ? data.smallRate : data.rate
     return {
       rate: data.rate,
+      smallRate: small,
       ghsPerRmb:
         typeof data.ghsPerRmb === "number" && data.ghsPerRmb > 0
           ? data.ghsPerRmb
@@ -65,23 +78,27 @@ function payloadToCache(data: FetchRatePayload): CachedExchangeRate | null {
       status: "active",
       tradingEnabled: true,
       pendingMessage: RATE_PENDING_MESSAGE,
+      minGhs: data.minGhs || MIN_GHS_AMOUNT,
+      standardFromGhs: data.standardFromGhs || STANDARD_TIER_MIN_GHS,
     }
   }
 
   return null
 }
 
-function applyPayload(
-  data: FetchRatePayload,
-  setters: {
-    setRate: (v: number | null) => void
-    setGhsPerRmb: (v: number | null) => void
-    setStatus: (v: RateDisplayStatus) => void
-    setTradingEnabled: (v: boolean) => void
-    setPendingMessage: (v: string) => void
-    setLoading: (v: boolean) => void
-  }
-): boolean {
+type Setters = {
+  setRate: (v: number | null) => void
+  setSmallRate: (v: number | null) => void
+  setGhsPerRmb: (v: number | null) => void
+  setStatus: (v: RateDisplayStatus) => void
+  setTradingEnabled: (v: boolean) => void
+  setPendingMessage: (v: string) => void
+  setLoading: (v: boolean) => void
+  setMinGhs: (v: number) => void
+  setStandardFromGhs: (v: number) => void
+}
+
+function applyPayload(data: FetchRatePayload, setters: Setters): boolean {
   const cached = payloadToCache(data)
   if (!cached) {
     return false
@@ -91,72 +108,70 @@ function applyPayload(
 
   if (cached.status === "pending") {
     setters.setRate(0)
+    setters.setSmallRate(0)
     setters.setGhsPerRmb(null)
     setters.setStatus("pending")
     setters.setTradingEnabled(false)
     setters.setPendingMessage(cached.pendingMessage)
     setters.setLoading(false)
+    setters.setMinGhs(cached.minGhs)
+    setters.setStandardFromGhs(cached.standardFromGhs)
     return true
   }
 
   setters.setRate(cached.rate)
+  setters.setSmallRate(cached.smallRate)
   setters.setGhsPerRmb(cached.ghsPerRmb)
   setters.setStatus("active")
   setters.setTradingEnabled(true)
   setters.setPendingMessage(cached.pendingMessage)
   setters.setLoading(false)
+  setters.setMinGhs(cached.minGhs)
+  setters.setStandardFromGhs(cached.standardFromGhs)
   return true
 }
 
-function getInitialState() {
-  const cached = readCachedExchangeRate()
-  if (cached) {
-    const state = cachedRateToState(cached)
-    return { ...state, fromCache: true as const }
-  }
-  return {
-    rate: null as number | null,
-    ghsPerRmb: null as number | null,
-    status: "loading" as RateDisplayStatus,
-    tradingEnabled: false,
-    pendingMessage: RATE_PENDING_MESSAGE,
-    loading: true,
-    fromCache: false as const,
-  }
-}
-
 export function useExchangeRate(pollMs = 60_000): RateState {
-  const initial = getInitialState()
-  const [rate, setRate] = useState<number | null>(initial.rate)
-  const [ghsPerRmb, setGhsPerRmb] = useState<number | null>(initial.ghsPerRmb)
-  const [status, setStatus] = useState<RateDisplayStatus>(initial.status)
-  const [tradingEnabled, setTradingEnabled] = useState(initial.tradingEnabled)
-  const [pendingMessage, setPendingMessage] = useState(initial.pendingMessage)
-  const [loading, setLoading] = useState(initial.loading)
-  const hasLoadedOnce = useRef(initial.fromCache)
+  const [rate, setRate] = useState<number | null>(null)
+  const [smallRate, setSmallRate] = useState<number | null>(null)
+  const [ghsPerRmb, setGhsPerRmb] = useState<number | null>(null)
+  const [status, setStatus] = useState<RateDisplayStatus>("loading")
+  const [tradingEnabled, setTradingEnabled] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState(RATE_PENDING_MESSAGE)
+  const [loading, setLoading] = useState(true)
+  const [minGhs, setMinGhs] = useState(MIN_GHS_AMOUNT)
+  const [standardFromGhs, setStandardFromGhs] = useState(STANDARD_TIER_MIN_GHS)
+  const hasLoadedOnce = useRef(false)
   const retryCount = useRef(0)
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const setters = {
+  const setters: Setters = {
     setRate,
+    setSmallRate,
     setGhsPerRmb,
     setStatus,
     setTradingEnabled,
     setPendingMessage,
     setLoading,
+    setMinGhs,
+    setStandardFromGhs,
   }
 
-  const applyRate = useCallback((storedRate: StoredExchangeRate) => {
-    if (storedRate === 0) {
+  const applyRates = useCallback((standardRate: StoredExchangeRate, nextSmallRate: StoredExchangeRate) => {
+    if (standardRate === 0) {
       const cached: CachedExchangeRate = {
         rate: 0,
+        smallRate: 0,
         ghsPerRmb: null,
         status: "pending",
         tradingEnabled: false,
         pendingMessage: RATE_PENDING_MESSAGE,
+        minGhs: MIN_GHS_AMOUNT,
+        standardFromGhs: STANDARD_TIER_MIN_GHS,
       }
       writeCachedExchangeRate(cached)
       setRate(0)
+      setSmallRate(0)
       setGhsPerRmb(null)
       setStatus("pending")
       setTradingEnabled(false)
@@ -165,23 +180,32 @@ export function useExchangeRate(pollMs = 60_000): RateState {
       hasLoadedOnce.current = true
       return
     }
-    if (!Number.isFinite(storedRate) || storedRate <= 0) return
+    if (!Number.isFinite(standardRate) || standardRate <= 0) return
+    const small = Number.isFinite(nextSmallRate) && nextSmallRate > 0 ? nextSmallRate : standardRate
 
     const cached: CachedExchangeRate = {
-      rate: storedRate,
-      ghsPerRmb: 1 / storedRate,
+      rate: standardRate,
+      smallRate: small,
+      ghsPerRmb: 1 / standardRate,
       status: "active",
       tradingEnabled: true,
       pendingMessage: RATE_PENDING_MESSAGE,
+      minGhs: MIN_GHS_AMOUNT,
+      standardFromGhs: STANDARD_TIER_MIN_GHS,
     }
     writeCachedExchangeRate(cached)
-    setRate(storedRate)
-    setGhsPerRmb(1 / storedRate)
+    setRate(standardRate)
+    setSmallRate(small)
+    setGhsPerRmb(1 / standardRate)
     setStatus("active")
     setTradingEnabled(true)
     setLoading(false)
     hasLoadedOnce.current = true
   }, [])
+
+  const applyRate = useCallback((storedRate: StoredExchangeRate) => {
+    applyRates(storedRate, storedRate)
+  }, [applyRates])
 
   const load = useCallback(async (options?: { background?: boolean }) => {
     const background = options?.background ?? hasLoadedOnce.current
@@ -209,11 +233,14 @@ export function useExchangeRate(pollMs = 60_000): RateState {
       if (cached) {
         const state = cachedRateToState(cached)
         setRate(state.rate)
+        setSmallRate(state.smallRate)
         setGhsPerRmb(state.ghsPerRmb)
         setStatus(state.status)
         setTradingEnabled(state.tradingEnabled)
         setPendingMessage(state.pendingMessage)
         setLoading(false)
+        setMinGhs(state.minGhs)
+        setStandardFromGhs(state.standardFromGhs)
         hasLoadedOnce.current = true
 
         if (retryCount.current < MAX_RETRIES) {
@@ -245,7 +272,22 @@ export function useExchangeRate(pollMs = 60_000): RateState {
   }, [])
 
   useEffect(() => {
-    void load({ background: initial.fromCache })
+    const cached = readCachedExchangeRate()
+    if (cached) {
+      const state = cachedRateToState(cached)
+      setRate(state.rate)
+      setSmallRate(state.smallRate)
+      setGhsPerRmb(state.ghsPerRmb)
+      setStatus(state.status)
+      setTradingEnabled(state.tradingEnabled)
+      setPendingMessage(state.pendingMessage)
+      setLoading(false)
+      setMinGhs(state.minGhs)
+      setStandardFromGhs(state.standardFromGhs)
+      hasLoadedOnce.current = true
+    }
+
+    void load({ background: Boolean(cached) })
     const id = setInterval(() => {
       void load({ background: true })
     }, pollMs)
@@ -253,16 +295,20 @@ export function useExchangeRate(pollMs = 60_000): RateState {
       clearInterval(id)
       if (retryTimer.current) clearTimeout(retryTimer.current)
     }
-  }, [load, pollMs, initial.fromCache])
+  }, [load, pollMs])
 
   return {
     rate,
+    smallRate,
     ghsPerRmb,
     status,
     tradingEnabled,
     pendingMessage,
     loading,
+    minGhs,
+    standardFromGhs,
     refresh: () => load({ background: false }),
+    applyRates,
     applyRate,
   }
 }

@@ -12,7 +12,7 @@ export default function SiteClosedPage() {
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50/40 to-slate-100 px-4 py-12">
       <div className="w-full max-w-md rounded-2xl border border-slate-200/90 bg-white p-8 text-center shadow-sm">
         <Image
-          src="/logo-nav.png?v=3"
+          src="/logo-nav.png?v=5"
           alt="Trade RMB"
           width={56}
           height={56}

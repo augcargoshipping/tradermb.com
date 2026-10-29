@@ -3,13 +3,19 @@
 import { useCallback, useEffect, useState } from "react"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Bookmark, PlusSquare, Share, Smartphone, X } from "lucide-react"
+import { PlusSquare, Share, Smartphone, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
-const DISMISS_KEY = "tradeRmbInstallPromptDismissed"
-const DISMISS_MS = 14 * 24 * 60 * 60 * 1000
+const SEEN_KEY = "tradeRmbAddToHomeSeen"
+const LEGACY_DISMISS_KEY = "tradeRmbInstallPromptDismissed"
 
-type InstallMode = "ios" | "android" | "desktop"
+type PhoneMode = "ios" | "android"
+
+function isInstallPreview(): boolean {
+  if (typeof window === "undefined") return false
+  return new URLSearchParams(window.location.search).get("install-preview") === "1"
+}
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -24,71 +30,115 @@ function isStandalone(): boolean {
   )
 }
 
-function isIOS(): boolean {
-  if (typeof navigator === "undefined") return false
-  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+function detectPhone(): PhoneMode | null {
+  if (typeof navigator === "undefined") return null
+  const ua = navigator.userAgent || ""
+  const iPadOs = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1
+  // iPhone, iPad, iPod, and Chrome/Firefox on iOS (CriOS / FxiOS still include iPhone)
+  if (/iPad|iPhone|iPod/.test(ua) || iPadOs) return "ios"
+  if (/Android/i.test(ua)) return "android"
+  return null
 }
 
-function isMobile(): boolean {
-  if (typeof navigator === "undefined") return false
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-}
-
-function wasDismissedRecently(): boolean {
+function hasSeenPrompt(): boolean {
   try {
-    const raw = localStorage.getItem(DISMISS_KEY)
-    if (!raw) return false
-    const ts = Number(raw)
-    return !Number.isNaN(ts) && Date.now() - ts < DISMISS_MS
+    return localStorage.getItem(SEEN_KEY) === "1" || Boolean(localStorage.getItem(LEGACY_DISMISS_KEY))
   } catch {
-    return false
+    return true
   }
+}
+
+function markPromptSeen(): void {
+  try {
+    localStorage.setItem(SEEN_KEY, "1")
+  } catch {
+    /* ignore */
+  }
+}
+
+function IosSteps() {
+  return (
+    <div className="space-y-2">
+      <p className="flex items-start gap-2 text-emerald-900">
+        <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
+        On iPhone or iPad (Safari):
+      </p>
+      <ol className="list-decimal space-y-1 pl-5 text-gray-600">
+        <li>
+          Tap <Share className="inline h-4 w-4 text-blue-600" /> <strong>Share</strong>
+        </li>
+        <li>
+          Tap <PlusSquare className="inline h-4 w-4" /> <strong>Add to Home Screen</strong>
+        </li>
+        <li>
+          Tap <strong>Add</strong>
+        </li>
+      </ol>
+    </div>
+  )
+}
+
+function AndroidSteps() {
+  return (
+    <div className="space-y-2">
+      <p className="flex items-start gap-2 text-emerald-900">
+        <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
+        On Android (Chrome):
+      </p>
+      <ol className="list-decimal space-y-1 pl-5 text-gray-600">
+        <li>
+          Tap the <strong>⋮</strong> menu at the top right
+        </li>
+        <li>
+          Tap <strong>Add to Home screen</strong> or <strong>Install app</strong>
+        </li>
+        <li>
+          Tap <strong>Add</strong>
+        </li>
+      </ol>
+    </div>
+  )
 }
 
 export function AddToHomeScreenPrompt() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const [mode, setMode] = useState<InstallMode>("desktop")
+  const [mode, setMode] = useState<PhoneMode>("ios")
+  const [canSwitchPreview, setCanSwitchPreview] = useState(false)
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [installing, setInstalling] = useState(false)
 
-  const dismiss = useCallback(() => {
-    try {
-      localStorage.setItem(DISMISS_KEY, String(Date.now()))
-    } catch {
-      /* ignore */
-    }
+  const close = useCallback(() => {
+    if (!isInstallPreview()) markPromptSeen()
     setOpen(false)
   }, [])
 
   useEffect(() => {
-    if (isStandalone() || wasDismissedRecently()) return
-    if (pathname?.startsWith("/auth") || pathname?.startsWith("/admin")) return
+    const preview = isInstallPreview()
+    if (pathname !== "/" && !preview) return
+    if (!preview && (isStandalone() || hasSeenPrompt())) return
 
-    let showTimer: ReturnType<typeof setTimeout> | undefined
+    const detected = detectPhone()
+    if (!detected && !preview) return
+
+    setMode(detected ?? "ios")
+    setCanSwitchPreview(preview && !detected)
 
     const onInstallPrompt = (e: Event) => {
       e.preventDefault()
       setInstallEvent(e as BeforeInstallPromptEvent)
-      setMode("android")
-      showTimer = setTimeout(() => setOpen(true), 2000)
+      if (!detected) setMode("android")
     }
-
     window.addEventListener("beforeinstallprompt", onInstallPrompt)
 
-    if (isIOS()) {
-      setMode("ios")
-      showTimer = setTimeout(() => setOpen(true), 3000)
-    } else if (!isMobile()) {
-      setMode("desktop")
-      showTimer = setTimeout(() => setOpen(true), 5000)
-    } else {
-      setMode("android")
-      showTimer = setTimeout(() => setOpen(true), 3500)
-    }
+    const showTimer = setTimeout(() => {
+      if (!preview && (hasSeenPrompt() || isStandalone())) return
+      if (!preview) markPromptSeen()
+      setOpen(true)
+    }, preview ? 200 : 1800)
 
     return () => {
-      if (showTimer) clearTimeout(showTimer)
+      clearTimeout(showTimer)
       window.removeEventListener("beforeinstallprompt", onInstallPrompt)
     }
   }, [pathname])
@@ -99,9 +149,9 @@ export function AddToHomeScreenPrompt() {
     try {
       await installEvent.prompt()
       await installEvent.userChoice
-      dismiss()
+      close()
     } catch {
-      /* user cancelled or browser blocked */
+      /* cancelled */
     } finally {
       setInstalling(false)
       setInstallEvent(null)
@@ -112,121 +162,73 @@ export function AddToHomeScreenPrompt() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4 sm:items-center"
+      className="fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 pointer-events-none"
       role="dialog"
       aria-labelledby="install-prompt-title"
-      aria-modal="true"
+      aria-modal="false"
     >
-      <div className="relative w-full max-w-md rounded-2xl border border-emerald-100 bg-white p-5 shadow-xl safe-bottom sm:p-6">
+      <div className="pointer-events-auto relative w-full max-w-md rounded-2xl border border-emerald-100 bg-white p-4 shadow-lg safe-bottom sm:p-5">
         <button
           type="button"
-          onClick={dismiss}
-          className="absolute right-3 top-3 rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          onClick={close}
+          className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
 
         <div className="flex items-center gap-3 pr-8">
-          <Image src="/logo-nav.png?v=3" alt="" width={48} height={48} className="h-12 w-12 object-contain" />
+          <Image src="/logo-nav.png?v=5" alt="" width={40} height={40} className="h-10 w-10 object-contain" />
           <div>
-            <h2 id="install-prompt-title" className="text-lg font-bold text-gray-900">
-              Save Trade RMB
+            <h2 id="install-prompt-title" className="text-base font-bold text-gray-900">
+              Add Trade RMB to your home screen
             </h2>
-            <p className="text-sm text-gray-500">Quick access from your home screen or bookmarks</p>
+            <p className="text-xs text-gray-500">Opens like an app next time — this tip shows once.</p>
           </div>
         </div>
 
-        <div className="mt-4 space-y-3 text-sm text-gray-700">
-          {mode === "ios" && (
-            <>
-              <p className="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-emerald-900">
-                <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
-                Add this site to your iPhone home screen for one-tap access.
-              </p>
-              <ol className="list-decimal space-y-2 pl-5 text-gray-600">
-                <li>
-                  Tap <Share className="inline h-4 w-4 text-blue-600" /> <strong>Share</strong> in Safari
-                </li>
-                <li>
-                  Scroll and tap <PlusSquare className="inline h-4 w-4 text-gray-700" />{" "}
-                  <strong>Add to Home Screen</strong>
-                </li>
-                <li>Tap <strong>Add</strong> — you&apos;re done!</li>
-              </ol>
-            </>
-          )}
-
-          {mode === "android" && (
-            <>
-              <p className="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-emerald-900">
-                <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
-                Install Trade RMB on your phone for faster access next time.
-              </p>
-              {installEvent ? (
-                <p className="text-gray-600">Tap the button below to add the app to your home screen.</p>
-              ) : (
-                <ol className="list-decimal space-y-2 pl-5 text-gray-600">
-                  <li>
-                    Open your browser menu <span className="font-medium">(⋮)</span>
-                  </li>
-                  <li>
-                    Tap <strong>Add to Home screen</strong> or <strong>Install app</strong>
-                  </li>
-                  <li>Confirm to add Trade RMB</li>
-                </ol>
+        {canSwitchPreview ? (
+          <div className="mt-3 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+            <button
+              type="button"
+              className={cn(
+                "rounded-md px-2 py-1.5 text-xs font-semibold",
+                mode === "ios" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
               )}
-            </>
-          )}
+              onClick={() => setMode("ios")}
+            >
+              iPhone
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "rounded-md px-2 py-1.5 text-xs font-semibold",
+                mode === "android" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              )}
+              onClick={() => setMode("android")}
+            >
+              Android
+            </button>
+          </div>
+        ) : null}
 
-          {mode === "desktop" && (
-            <>
-              <p className="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-emerald-900">
-                <Bookmark className="mt-0.5 h-4 w-4 shrink-0" />
-                Bookmark this page to return quickly without signing in again.
-              </p>
-              <ul className="space-y-2 text-gray-600">
-                <li>
-                  <strong>Windows:</strong> Press <kbd className="rounded border bg-gray-100 px-1.5 py-0.5 text-xs">Ctrl</kbd>{" "}
-                  + <kbd className="rounded border bg-gray-100 px-1.5 py-0.5 text-xs">D</kbd>
-                </li>
-                <li>
-                  <strong>Mac:</strong> Press <kbd className="rounded border bg-gray-100 px-1.5 py-0.5 text-xs">⌘</kbd>{" "}
-                  + <kbd className="rounded border bg-gray-100 px-1.5 py-0.5 text-xs">D</kbd>
-                </li>
-                <li>
-                  Or click the <Bookmark className="inline h-3.5 w-3.5" /> star in your browser&apos;s address bar
-                </li>
-              </ul>
-            </>
-          )}
+        <div className="mt-3 text-sm text-gray-700">
+          {mode === "ios" ? <IosSteps /> : <AndroidSteps />}
         </div>
 
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-          {mode === "android" && installEvent && (
+        <div className="mt-4 flex gap-2">
+          {mode === "android" && installEvent ? (
             <Button
               type="button"
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
               onClick={() => void handleInstall()}
               disabled={installing}
             >
               {installing ? "Adding…" : "Add to Home Screen"}
             </Button>
-          )}
-          <Button
-            type="button"
-            variant={mode === "android" && installEvent ? "outline" : "default"}
-            className={
-              mode === "android" && installEvent
-                ? "w-full"
-                : "w-full bg-emerald-600 hover:bg-emerald-700"
-            }
-            onClick={dismiss}
-          >
+          ) : null}
+          <Button type="button" variant="outline" className="flex-1" onClick={close}>
             Got it
-          </Button>
-          <Button type="button" variant="ghost" className="w-full text-gray-500" onClick={dismiss}>
-            Not now
           </Button>
         </div>
       </div>

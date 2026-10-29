@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateReferenceCode } from "@/lib/reference-code"
-import { resolveExchangeRate } from "@/lib/exchange-rate"
+import { rateForGhsAmount, resolveExchangeRate } from "@/lib/exchange-rate"
+import { minGhsError, STANDARD_TIER_MIN_GHS } from "@/lib/trade-policy"
 import { runMigrations } from "@/lib/db/migrate"
 import { orderRepo } from "@/lib/db/order-repo"
 import { getAuthSession } from "@/lib/auth-server"
@@ -63,17 +64,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (Math.abs(rateValue - rateState.storedRate) > 0.0001) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Exchange rate changed",
-          details: "Refresh the page to use the latest rate.",
-        },
-        { status: 409 }
-      )
-    }
-
     const ghsNum = Number.parseFloat(ghsAmount)
     const rmbNum = Number.parseFloat(rmbAmount)
     if (!Number.isFinite(ghsNum) || ghsNum <= 0 || !Number.isFinite(rmbNum) || rmbNum <= 0) {
@@ -97,7 +87,7 @@ export async function POST(request: NextRequest) {
     await runMigrations()
 
     let referenceCode = generateReferenceCode()
-    for (let attempt = 0; attempt < 10; attempt++) {
+          details: `This trade uses ${ghsNum >= STANDARD_TIER_MIN_GHS ? "the ₵1,000+" : "the under-₵1,000"} rate. Refresh and try again.`,
       if (!(await orderRepo.referenceCodeExists(referenceCode))) break
       referenceCode = generateReferenceCode()
     }

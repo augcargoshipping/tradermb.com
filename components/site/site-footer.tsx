@@ -15,7 +15,7 @@ export function SiteFooter() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-3">
-              <Image src="/logo-nav.png?v=3" alt="" width={44} height={44} className="h-11 w-11 object-contain" />
+              <Image src="/logo-nav.png?v=5" alt="" width={44} height={44} className="h-11 w-11 object-contain" />
               <p className="font-display text-xl font-bold text-white">Trade RMB</p>
             </div>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-400">

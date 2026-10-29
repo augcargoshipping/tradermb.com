@@ -58,7 +58,7 @@ export function SiteHeader({ onBuy, className }: SiteHeaderProps) {
           aria-label="Trade RMB home"
         >
           <Image
-            src="/logo-nav.png?v=3"
+            src="/logo-nav.png?v=5"
             alt=""
             width={40}
             height={40}

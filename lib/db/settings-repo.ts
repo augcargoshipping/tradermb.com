@@ -1,6 +1,7 @@
 import { getDbClient } from "./client"
 
 const SINGLE_RATE_KEY = "single_exchange_rate"
+const SMALL_RATE_KEY = "small_exchange_rate"
 
 export class SettingsRepo {
   async getSetting(key: string): Promise<string | null> {
