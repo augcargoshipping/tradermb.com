@@ -39,6 +39,27 @@ export class SettingsRepo {
   async setSingleRate(rate: number): Promise<void> {
     await this.setSetting(SINGLE_RATE_KEY, String(rate))
   }
+
+  async getSmallRate(): Promise<number | null> {
+    const raw = await this.getSetting(SMALL_RATE_KEY)
+    if (raw === null) return null
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : null
+  }
+
+  async setSmallRate(rate: number): Promise<void> {
+    await this.setSetting(SMALL_RATE_KEY, String(rate))
+  }
+
+  /** Standard (₵1,000+) plus small-trade rate. Small falls back to standard if unset. */
+  async getDualRates(): Promise<{ standard: number | null; small: number | null }> {
+    const standard = await this.getSingleRate()
+    const small = await this.getSmallRate()
+    return {
+      standard,
+      small: small !== null ? small : standard,
+    }
+  }
 }
 
 export const settingsRepo = new SettingsRepo()
